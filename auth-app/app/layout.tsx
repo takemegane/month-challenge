@@ -14,7 +14,12 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
-      <body className={`${inter.variable} min-h-screen antialiased bg-[radial-gradient(1200px_600px_at_50%_-10%,rgba(34,197,94,0.18),transparent),linear-gradient(180deg,#f0fdf4,#dcfce7)] text-zinc-800`}>
+      <body 
+        className={`${inter.variable} min-h-screen antialiased text-zinc-800`}
+        style={{
+          background: `radial-gradient(1200px 600px at 50% -10%, rgba(34,197,94,0.18), transparent), linear-gradient(180deg, #f0fdf4, #dcfce7)`
+        }}
+      >
         <Header />
         <AuthLayout>{children}</AuthLayout>
       </body>
