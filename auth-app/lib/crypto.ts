@@ -16,6 +16,11 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 const b64url = (b: Buffer) => b.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+const fromB64Url = (s: string) => {
+  let t = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (t.length % 4) t += "="; // pad to multiple of 4
+  return Buffer.from(t, "base64");
+};
 
 export function signToken(payload: Record<string, any>, secret: string): string {
   const header = { alg: "HS256", typ: "JWT" };
@@ -31,12 +36,13 @@ export function verifyToken(token: string, secret: string): { valid: boolean; pa
   const [h, p, s] = parts;
   const data = `${h}.${p}`;
   const sig = createHmac("sha256", secret).update(data).digest();
-  const target = Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/") + "=", "base64");
-  if (!timingSafeEqual(sig, target)) return { valid: false };
+  const target = fromB64Url(s);
   try {
-    const payload = JSON.parse(Buffer.from(p.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+    if (!timingSafeEqual(sig, target)) return { valid: false };
+  } catch { return { valid: false }; }
+  try {
+    const payload = JSON.parse(fromB64Url(p).toString("utf8"));
     if (payload.exp && Date.now() / 1000 > payload.exp) return { valid: false };
     return { valid: true, payload };
   } catch { return { valid: false }; }
 }
-
