@@ -32,7 +32,7 @@ export default function SignUp() {
               <label className="text-sm text-orange-900/80">パスワード</label>
               <input className="border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-orange-300" placeholder="8文字以上" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
             </div>
-            <button className="btn-primary rounded px-4 py-2">登録</button>
+            <button className="btn-primary rounded px-4 py-2 w-full">登録</button>
           </form>
           {msg && <div className="mt-3 text-sm text-orange-900/80">{msg}</div>}
           <div className="mt-4 text-sm text-orange-900/80">すでにアカウントあり？ <Link href={"/auth/sign-in" as Route} className="text-orange-700 underline">ログイン</Link></div>
