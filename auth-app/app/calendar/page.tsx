@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 
 export default async function CalendarPage() {
   // Ensure logged-in; if not, redirect
-  const token = cookies().get('auth-token');
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth-token');
   if (!token) {
     return (
       <div>
