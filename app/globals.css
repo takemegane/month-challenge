@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { height: 100%; }
+
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 3px;
+}
+
+.tap-target { min-height: 44px; min-width: 44px; }
+
+/* Components */
+.btn {
+  @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent;
+}
+.btn-primary {
+  @apply btn bg-primary text-white shadow-glow hover:bg-blue-600 active:scale-[0.99];
+}
+.btn-ghost {
+  @apply btn bg-white/5 hover:bg-white/10 text-white/90;
+}
+.card-title {
+  @apply text-xl font-semibold tracking-tight mb-3;
+}

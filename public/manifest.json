@@ -1,0 +1,12 @@
+{
+  "name": "月チャレ",
+  "short_name": "月チャレ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "/icons/icon-192.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icons/icon-512.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
