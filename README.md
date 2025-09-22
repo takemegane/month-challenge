@@ -1,5 +1,7 @@
 DailyPing — コミュニティ日次投稿トラッカー
 
+![Deploy to Vercel](https://github.com/takemegane/month-challenge/actions/workflows/vercel-deploy.yml/badge.svg?branch=main)
+
 概要
 - Next.js (App Router, TS) + Tailwind + Neon(Postgres) + PWA。
 - 主要ユースケース：ログインなし→ ヘッダーのプルダウンでユーザーを選択 → 「今日の記録」→ 1/3/6ヶ月一覧・CSV、管理者がユーザー名を作成。
