@@ -88,7 +88,7 @@ jobs:
 
       - name: Install dependencies (auth-app)
         working-directory: auth-app
-        run: npm ci
+        run: npm install
 
       - name: Pull Vercel Env (preview, auth-app)
         working-directory: auth-app
@@ -147,7 +147,7 @@ jobs:
 
       - name: Install dependencies (auth-app)
         working-directory: auth-app
-        run: npm ci
+        run: npm install
 
       - name: Pull Vercel Env (prod, auth-app)
         working-directory: auth-app
