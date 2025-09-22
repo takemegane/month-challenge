@@ -5,7 +5,7 @@ export default function CalendarPage() {
   const [me, setMe] = useState<any>(null);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
-    fetch('/api/auth/me', { cache: 'no-store' }).then(r=>r.json()).then(j=>{
+    fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' }).then(r=>r.json()).then(j=>{
       if (j?.user) setMe(j.user); else location.href = '/auth/sign-in';
     }).catch(()=>{});
   }, []);
@@ -25,4 +25,3 @@ export default function CalendarPage() {
     </div></div>
   );
 }
-
