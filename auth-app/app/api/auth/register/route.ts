@@ -31,3 +31,6 @@ export async function POST(req: Request) {
   }
 }
 
+export async function GET() {
+  return NextResponse.json({ error: 'method_not_allowed', hint: 'POST /api/auth/register with JSON { email, password, name }' }, { status: 405 });
+}
