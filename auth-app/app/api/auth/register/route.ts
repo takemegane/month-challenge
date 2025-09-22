@@ -12,7 +12,9 @@ const Body = z.object({
 export async function POST(req: Request) {
   const json = await req.json().catch(()=>null);
   const parse = Body.safeParse(json);
-  if (!parse.success) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  if (!parse.success) {
+    return NextResponse.json({ error: 'bad_request', issues: parse.error.issues }, { status: 400 });
+  }
   const { email, password, name } = parse.data;
   const admins = (process.env.ADMIN_EMAILS || '').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
   const isAdmin = admins.includes(email.toLowerCase());

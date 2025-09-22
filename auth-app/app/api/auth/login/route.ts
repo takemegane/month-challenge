@@ -11,7 +11,9 @@ const Body = z.object({
 export async function POST(req: Request) {
   const json = await req.json().catch(()=>null);
   const parse = Body.safeParse(json);
-  if (!parse.success) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  if (!parse.success) {
+    return NextResponse.json({ error: 'bad_request', issues: parse.error.issues }, { status: 400 });
+  }
   const { email, password } = parse.data;
   const rows = await query<{ id: string; password_hash: string; name: string; is_admin: boolean }>`
     select id, password_hash, name, is_admin from auth_users where lower(email) = lower(${email})
