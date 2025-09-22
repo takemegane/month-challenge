@@ -10,7 +10,7 @@ export default function SignUp() {
   const [msg, setMsg] = useState<string | null>(null);
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault(); setMsg(null);
-    const res = await fetch("/api/auth/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, name }) });
+    const res = await fetch("/api/auth/register", { method: "POST", headers: { "content-type": "application/json" }, credentials: 'include', body: JSON.stringify({ email, password, name }) });
     const j = await res.json().catch(()=>({}));
     if (res.ok) location.href = "/calendar"; else setMsg(j.error || "失敗しました");
   }

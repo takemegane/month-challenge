@@ -9,7 +9,7 @@ export default function SignIn() {
   const [msg, setMsg] = useState<string | null>(null);
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault(); setMsg(null);
-    const res = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+    const res = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, credentials: 'include', body: JSON.stringify({ email, password }) });
     const j = await res.json().catch(()=>({}));
     if (res.ok) location.href = "/calendar"; else setMsg(j.error || "失敗しました");
   }
