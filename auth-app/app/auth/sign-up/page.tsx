@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -23,8 +24,7 @@ export default function SignUp() {
         <button className="btn btn-primary">登録</button>
       </form>
       {msg && <div className="mt-2" style={{ color: '#b45309' }}>{msg}</div>}
-      <div className="mt-3 text-sm">すでにアカウントあり？ <Link href="/auth/sign-in" className="underline">ログイン</Link></div>
+      <div className="mt-3 text-sm">すでにアカウントあり？ <Link href={"/auth/sign-in" as Route} className="underline">ログイン</Link></div>
     </div></div>
   );
 }
-
