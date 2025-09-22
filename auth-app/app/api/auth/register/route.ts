@@ -3,7 +3,11 @@ import { z } from "zod";
 import { query } from "../../../../lib/db";
 import { hashPassword, signToken } from "../../../../lib/crypto";
 
-const Body = z.object({ email: z.string().email(), password: z.string().min(8).max(100), name: z.string().min(1).max(100) });
+const Body = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  password: z.string().min(8).max(100),
+  name: z.string().trim().min(1).max(100),
+});
 
 export async function POST(req: Request) {
   const json = await req.json().catch(()=>null);
