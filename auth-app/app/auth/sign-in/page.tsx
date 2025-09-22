@@ -23,7 +23,7 @@ export default function SignIn() {
   }
   
   return (
-    <div className="min-h-[calc(100vh-120px)] flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-zinc-800 mb-8">月チャレログイン</h1>
