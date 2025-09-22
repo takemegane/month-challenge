@@ -15,14 +15,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="ja">
       <body 
-        className={`${inter.variable} min-h-screen antialiased text-white overflow-x-hidden`}
+        className={`${inter.variable} min-h-screen antialiased text-zinc-800`}
         style={{
-          background: `
-            radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 131, 122, 0.3), transparent 50%),
-            radial-gradient(circle at 40% 80%, rgba(120, 219, 226, 0.2), transparent 50%),
-            linear-gradient(135deg, #0f0c29 0%, #24243e 50%, #313154 100%)
-          `
+          background: `radial-gradient(1200px 600px at 50% -10%, rgba(34,197,94,0.18), transparent), linear-gradient(180deg, #f0fdf4, #dcfce7)`
         }}
       >
         <Header />
