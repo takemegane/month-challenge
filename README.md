@@ -68,4 +68,15 @@ PWA
 - 管理者 API は service role key を使用して RLS をバイパスします。必ずサーバ環境変数として扱ってください。
 - 本リポは最小実装です。shadcn/ui 導入やUI強化は任意で追加してください。
 引き継ぎ資料
-- docs/HANDOVER.md に全体像/統合手順/運用の要点をまとめています。
+ - docs/HANDOVER.md に全体像/統合手順/運用の要点をまとめています。
+
+CI/CD（GitHub → Vercel 自動デプロイ）
+- 本リポは GitHub Actions による Vercel デプロイを同梱しています。
+- 設定手順（1回のみ）
+  1) GitHub Secrets に以下を登録
+     - VERCEL_TOKEN: VercelのPersonal Token
+     - VERCEL_ORG_ID: VercelのOrg ID（例: team_xxx）
+     - VERCEL_PROJECT_ID: VercelのProject ID（例: prj_xxx）
+  2) Vercel Project Settings に本番/プレビューの環境変数（例: DATABASE_URL）を設定
+  3) main ブランチに push（または PR マージ）すると自動で本番へデプロイ
+- ワークフロー: `.github/workflows/vercel-deploy.yml`
