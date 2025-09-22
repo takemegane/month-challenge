@@ -39,7 +39,17 @@ export default function SignIn() {
                 onChange={e=>setPassword(e.target.value)} 
               />
             </div>
-            <button className="btn btn-primary w-full mt-6">ログイン</button>
+            <button 
+              className="w-full mt-6 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent bg-amber-500 text-white shadow-lg hover:bg-amber-600 active:scale-[0.99]" 
+              style={{
+                background: '#f59e0b',
+                boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.25)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#d97706'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#f59e0b'}
+            >
+              ログイン
+            </button>
           </form>
           {msg && <div className="mt-4 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">{msg}</div>}
           <div className="mt-6 text-center text-sm text-orange-900/80">
