@@ -19,6 +19,21 @@ function getMonthRange(input?: string) {
   return { month, startStr, endStr, start, end };
 }
 
+function normalizeDate(value: any): string {
+  if (!value) return "";
+  if (typeof value === "string") {
+    return value.length >= 10 ? value.slice(0, 10) : value;
+  }
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  try {
+    return new Date(value).toISOString().slice(0, 10);
+  } catch {
+    return String(value).slice(0, 10);
+  }
+}
+
 export async function GET(req: Request) {
   const admin = await requireAdmin(req);
   if (!admin.ok) {
@@ -46,7 +61,7 @@ export async function GET(req: Request) {
   const dailyCounts = new Map<string, number>();
 
   for (const row of entryRows) {
-    const date = row.entry_date.slice(0, 10);
+    const date = normalizeDate(row.entry_date);
     if (!entriesByUser.has(row.user_id)) {
       entriesByUser.set(row.user_id, []);
     }
@@ -76,7 +91,8 @@ export async function GET(req: Request) {
     const rows = entryRows
       .map((row) => {
         const user = userMap.get(row.user_id);
-        return [row.user_id, user?.name || "", user?.email || "", row.entry_date.slice(0, 10)].map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",");
+        const date = normalizeDate(row.entry_date);
+        return [row.user_id, user?.name || "", user?.email || "", date].map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",");
       })
       .join("\n");
     const csv = header + rows;
