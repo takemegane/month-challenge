@@ -494,12 +494,14 @@ export default function AdminPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => beginProfileEdit(u)}
                     className="text-sm px-3 py-1 rounded font-medium bg-white border border-orange-200 text-orange-700 hover:bg-orange-50"
                   >
                     編集
                   </button>
                   <button
+                    type="button"
                     onClick={() => toggleAdminPrivilege(u.id, u.is_admin || false)}
                     className={`text-xs px-2 py-1 rounded font-medium ${
                       u.is_admin
@@ -511,6 +513,7 @@ export default function AdminPage() {
                     {u.is_admin ? "権限剥奪" : "管理者化"}
                   </button>
                   <button
+                    type="button"
                     onClick={() => deleteUser(u.id, u.name)}
                     className={`text-sm px-3 py-1 rounded font-medium ${
                       u.is_admin
