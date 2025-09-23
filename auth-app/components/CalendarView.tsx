@@ -54,20 +54,45 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="text-2xl sm:text-4xl font-bold text-orange-900/90 text-center">{headerTitle}: {count} 件</div>
+      {/* PC版: 従来のレイアウト */}
+      <div className="hidden sm:flex items-center justify-between">
+        <button
+          className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="前の月"
+          onClick={() => setMonth((m) => addMonths(m, -1))}
+          disabled={!canPrev}
+        >
+          ← 前の月
+        </button>
+        <div className="flex flex-col items-center">
+          <div className="text-4xl font-bold text-orange-900/90 whitespace-nowrap">{headerTitle}: {count} 件</div>
+          <div className="mt-1 font-semibold text-orange-900/90 text-2xl">{monthLabel}</div>
+        </div>
+        <button
+          className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="次の月"
+          onClick={() => setMonth((m) => addMonths(m, +1))}
+          disabled={!canNext}
+        >
+          次の月 →
+        </button>
+      </div>
+
+      {/* スマホ版: コンパクトレイアウト */}
+      <div className="sm:hidden space-y-2">
+        <div className="text-2xl font-bold text-orange-900/90 text-center">{headerTitle}: {count} 件</div>
         <div className="flex items-center justify-center gap-2">
           <button
-            className="px-2 py-1 rounded text-orange-800 text-xl font-semibold hover:bg-orange-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 text-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="前の月"
             onClick={() => setMonth((m) => addMonths(m, -1))}
             disabled={!canPrev}
           >
             ←
           </button>
-          <div className="font-semibold text-orange-900/90 text-xl sm:text-2xl px-2">{monthLabel}</div>
+          <div className="font-semibold text-orange-900/90 text-xl px-2">{monthLabel}</div>
           <button
-            className="px-2 py-1 rounded text-orange-800 text-xl font-semibold hover:bg-orange-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 text-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="次の月"
             onClick={() => setMonth((m) => addMonths(m, +1))}
             disabled={!canNext}
