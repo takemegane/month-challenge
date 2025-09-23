@@ -1,0 +1,9 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "preview": false,
+      "production": true
+    },
+    "productionBranch": "ci/ignore-main-build"
+  }
+}
