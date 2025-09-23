@@ -4,6 +4,6 @@
       "preview": false,
       "production": true
     },
-    "productionBranch": "auth-main"
+    "productionBranch": "main"
   }
 }
