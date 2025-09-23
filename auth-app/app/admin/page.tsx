@@ -368,8 +368,8 @@ export default function AdminPage() {
             </div>
           )}
           <div className="flex gap-2">
-            <button onClick={submitProfileEdit} className="btn-primary rounded px-3 py-2">保存する</button>
-            <button onClick={cancelProfileEdit} className="rounded px-3 py-2 border border-orange-300 hover:bg-orange-50">キャンセル</button>
+            <button type="button" onClick={submitProfileEdit} className="btn-primary rounded px-3 py-2">保存する</button>
+            <button type="button" onClick={cancelProfileEdit} className="rounded px-3 py-2 border border-orange-300 hover:bg-orange-50">キャンセル</button>
           </div>
         </div>
       )}
