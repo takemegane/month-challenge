@@ -1,26 +1,30 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
+import Header from "../components/Header";
+import AuthLayout from "../components/AuthLayout";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata = {
-  title: "月チャレ（メールログイン版）",
-  description: "メール+パスワード版",
+  title: "月チャレ",
+  description: "コミュニティ日次投稿トラッカー（メールログイン版）",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
-      <body className="min-h-screen bg-white text-zinc-800">
-        <header className="border-b px-4 py-3">
-          <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <a href="/" className="font-semibold text-xl">月チャレ（メール版）</a>
-            <nav className="text-sm">
-              <a href="/auth/sign-in" className="underline">ログイン</a>
-            </nav>
-          </div>
-        </header>
-        <main className="max-w-3xl mx-auto px-4 py-6">{children}</main>
+      <body
+        className={`${inter.variable} antialiased text-zinc-800 min-h-screen`}
+        style={{
+          margin: 0,
+          padding: 0,
+          background: `radial-gradient(1200px 600px at 50% -10%, rgba(34,197,94,0.18), transparent), linear-gradient(180deg, #f0fdf4, #dcfce7)`
+        }}
+      >
+        <Header />
+        <AuthLayout>{children}</AuthLayout>
       </body>
     </html>
   );
 }
-
