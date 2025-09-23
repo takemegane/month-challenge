@@ -362,49 +362,43 @@ export default function AdminOverviewPage() {
               <div className="text-sm text-orange-900/70">6行表示・縦スクロール対応</div>
             </div>
             <div className="overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
-              <div className="overflow-x-auto">
+              <div className="max-h-[12rem] overflow-y-auto overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-0 text-xs">
-                  <thead className="bg-orange-50">
+                  <thead className="sticky top-0 bg-orange-50 z-10">
                     <tr>
-                      <th className="sticky left-0 z-10 bg-orange-50 px-3 py-2 text-left font-medium text-orange-900/80 border-r border-orange-200">ユーザー</th>
-                      <th className="px-3 py-2 text-right font-medium text-orange-900/80 border-r border-orange-200">件数</th>
+                      <th className="sticky left-0 z-20 bg-orange-50 px-3 py-2 text-left font-medium text-orange-900/80 border-r border-orange-200 min-w-[120px]">ユーザー</th>
+                      <th className="px-3 py-2 text-right font-medium text-orange-900/80 border-r border-orange-200 min-w-[60px]">件数</th>
                       {days.map((day) => (
-                        <th key={day} className="px-2 py-2 font-medium text-orange-900/70">
+                        <th key={day} className="px-2 py-2 font-medium text-orange-900/70 min-w-[40px]">
                           {Number(day.slice(-2))}
                         </th>
                       ))}
                     </tr>
                   </thead>
+                  <tbody>
+                    {data.users.map((user) => {
+                      const marked = new Set(user.dates);
+                      return (
+                        <tr key={`detail-${user.id}`} className="hover:bg-orange-50/50">
+                          <td className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-orange-900/90 border-r border-orange-200 min-w-[120px]">
+                            {user.name}
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold text-orange-900/80 border-r border-orange-200 min-w-[60px]">
+                            {user.total}
+                          </td>
+                          {days.map((day) => (
+                            <td key={`${user.id}-${day}`} className="px-2 py-1 min-w-[40px]">
+                              <div
+                                className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
+                                aria-label={marked.has(day) ? "チェック済" : "未チェック"}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
                 </table>
-              </div>
-              <div className="max-h-[12rem] overflow-y-auto">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-separate border-spacing-0 text-xs">
-                    <tbody>
-                      {data.users.map((user) => {
-                        const marked = new Set(user.dates);
-                        return (
-                          <tr key={`detail-${user.id}`} className="hover:bg-orange-25">
-                            <td className="sticky left-0 bg-white px-3 py-2 text-left font-medium text-orange-900/90 border-r border-orange-200">
-                              {user.name}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold text-orange-900/80 border-r border-orange-200">
-                              {user.total}
-                            </td>
-                            {days.map((day) => (
-                              <td key={`${user.id}-${day}`} className="px-2 py-1">
-                                <div
-                                  className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
-                                  aria-label={marked.has(day) ? "チェック済" : "未チェック"}
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </div>
           </section>
