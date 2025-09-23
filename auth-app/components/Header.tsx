@@ -85,6 +85,12 @@ export default function Header() {
               >
                 一覧
               </a>
+              <a
+                href="/account"
+                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
+              >
+                アカウント
+              </a>
               {user.is_admin && (
                 <>
                   <a
@@ -143,6 +149,12 @@ export default function Header() {
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               一覧
+            </a>
+            <a
+              href="/account"
+              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
+            >
+              アカウント
             </a>
             {user.is_admin && (
               <>

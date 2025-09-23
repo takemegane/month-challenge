@@ -17,6 +17,13 @@ export default function AdminPage() {
   const [adminUser, setAdminUser] = useState<string>("");
   const [adminMsg, setAdminMsg] = useState<string | null>(null);
   const [userListError, setUserListError] = useState<string | null>(null);
+  const [profileEditId, setProfileEditId] = useState<string>("");
+  const [profileName, setProfileName] = useState<string>("");
+  const [profileEmail, setProfileEmail] = useState<string>("");
+  const [profilePassword, setProfilePassword] = useState<string>("");
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileOriginal, setProfileOriginal] = useState<User | null>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -51,6 +58,14 @@ export default function AdminPage() {
         console.log("Loaded users:", json.users);
         setUsers(json.users || []);
         setUserListError(null);
+        if (profileEditId) {
+          const updated = json.users?.find((u: User) => u.id === profileEditId);
+          if (updated) {
+            setProfileName(updated.name);
+            setProfileEmail(updated.email);
+            setProfileOriginal(updated);
+          }
+        }
       } else {
         console.error("Failed to load users, status:", res.status);
         if (res.status === 401 || res.status === 403) {
@@ -63,6 +78,70 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Failed to load users:", error);
       setUserListError("ユーザー一覧の取得中にエラーが発生しました");
+    }
+  }
+
+  function beginProfileEdit(user: User) {
+    setProfileEditId(user.id);
+    setProfileName(user.name);
+    setProfileEmail(user.email);
+    setProfilePassword("");
+    setProfileMsg(null);
+    setProfileError(null);
+    setProfileOriginal(user);
+  }
+
+  function cancelProfileEdit() {
+    setProfileEditId("");
+    setProfileName("");
+    setProfileEmail("");
+    setProfilePassword("");
+    setProfileMsg(null);
+    setProfileError(null);
+    setProfileOriginal(null);
+  }
+
+  async function submitProfileEdit() {
+    if (!profileEditId || !profileOriginal) {
+      setProfileError("編集対象が選択されていません");
+      return;
+    }
+    setProfileError(null);
+    setProfileMsg(null);
+    const payload: Record<string, string> = {};
+    const nextName = profileName.trim();
+    const nextEmail = profileEmail.trim().toLowerCase();
+    if (nextName && nextName !== profileOriginal.name) payload.name = nextName;
+    if (nextEmail && nextEmail !== profileOriginal.email.toLowerCase()) payload.email = nextEmail;
+    if (profilePassword) payload.password = profilePassword;
+    if (Object.keys(payload).length === 0) {
+      setProfileError("変更内容がありません");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/users/${profileEditId}/profile`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setProfileMsg('プロフィールを更新しました');
+        setProfilePassword('');
+        loadUsers();
+      } else {
+        const code = data?.error || 'update_failed';
+        if (code === 'email_taken') {
+          setProfileError('このメールアドレスは既に使用されています');
+        } else if (code === 'nothing_to_update') {
+          setProfileError('変更内容がありません');
+        } else {
+          setProfileError('更新に失敗しました');
+        }
+      }
+    } catch (err) {
+      setProfileError('更新に失敗しました');
     }
   }
 
@@ -246,6 +325,55 @@ export default function AdminPage() {
         </div>
       )}
 
+      {profileEditId && (
+        <div className="rounded-lg border border-purple-200/70 bg-white p-4 max-w-2xl space-y-4">
+          <h2 className="font-medium text-purple-800">ユーザープロフィール編集</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-2 text-sm text-orange-900/80">
+              <span>名前</span>
+              <input
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                className="w-full rounded-md border border-orange-200 px-3 py-2"
+              />
+            </label>
+            <label className="space-y-2 text-sm text-orange-900/80">
+              <span>メールアドレス</span>
+              <input
+                value={profileEmail}
+                onChange={(e) => setProfileEmail(e.target.value)}
+                className="w-full rounded-md border border-orange-200 px-3 py-2"
+                type="email"
+              />
+            </label>
+          </div>
+          <label className="space-y-2 text-sm text-orange-900/80 block">
+            <span>新しいパスワード（必要な場合のみ）</span>
+            <input
+              value={profilePassword}
+              onChange={(e) => setProfilePassword(e.target.value)}
+              className="w-full rounded-md border border-orange-200 px-3 py-2"
+              type="password"
+              placeholder="変更しない場合は空のまま"
+            />
+          </label>
+          {profileError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {profileError}
+            </div>
+          )}
+          {profileMsg && (
+            <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {profileMsg}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button onClick={submitProfileEdit} className="btn-primary rounded px-3 py-2">保存する</button>
+            <button onClick={cancelProfileEdit} className="rounded px-3 py-2 border border-orange-300 hover:bg-orange-50">キャンセル</button>
+          </div>
+        </div>
+      )}
+
       {/* ユーザー登録 */}
       <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-4">
         <h2 className="font-medium">新規ユーザー登録</h2>
@@ -365,6 +493,12 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => beginProfileEdit(u)}
+                    className="text-sm px-3 py-1 rounded font-medium bg-white border border-orange-200 text-orange-700 hover:bg-orange-50"
+                  >
+                    編集
+                  </button>
                   <button
                     onClick={() => toggleAdminPrivilege(u.id, u.is_admin || false)}
                     className={`text-xs px-2 py-1 rounded font-medium ${
