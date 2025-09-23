@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { query } from "../../../../lib/db";
 import { verifyPassword, signToken } from "../../../../lib/crypto";
+import { ensureAdminSeeded } from "../../../../lib/admin-seed";
 
 const Body = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -9,6 +10,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  await ensureAdminSeeded();
   const json = await req.json().catch(()=>null);
   const parse = Body.safeParse(json);
   if (!parse.success) {
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
   const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
   const token = signToken({ sub: u.id, email, name: u.name, is_admin: u.is_admin, exp: Math.floor(Date.now()/1000) + 60*60*24*30 }, secret);
   const res = NextResponse.json({ user: { id: u.id, email, name: u.name, is_admin: u.is_admin } });
-  res.cookies.set('auth-token', token, { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60*60*24*30 });
+  res.cookies.set('auth-token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60*60*24*30 });
   return res;
 }
 

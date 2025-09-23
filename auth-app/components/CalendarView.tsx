@@ -19,7 +19,9 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
   const [month, setMonth] = useState<string>(initialMonth ? firstOfMonth(initialMonth) : firstOfMonth(today));
   const monthLabel = useMemo(() => formatInTimeZone(new Date(month), "Asia/Tokyo", "yyyy年M月"), [month]);
   const thisMonth = firstOfMonth(today);
+  const sixMonthsAgo = addMonths(thisMonth, -6);
   const canNext = month < thisMonth; // disable moving to future months
+  const canPrev = month > sixMonthsAgo; // disable moving more than 6 months back
   const [count, setCount] = useState<number>(0);
   const [marked, setMarked] = useState<Set<string>>(new Set());
   const headerTitle = useMemo(() => {
@@ -54,9 +56,10 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <button
-          className="btn-ghost px-3 py-2 rounded-md"
+          className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="前の月"
           onClick={() => setMonth((m) => addMonths(m, -1))}
+          disabled={!canPrev}
         >
           ← 前の月
         </button>
@@ -65,7 +68,7 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
           <div className="mt-1 font-semibold text-orange-900/90 text-xl sm:text-2xl">{monthLabel}</div>
         </div>
         <button
-          className="btn-ghost px-3 py-2 rounded-md disabled:opacity-50"
+          className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="次の月"
           onClick={() => setMonth((m) => addMonths(m, +1))}
           disabled={!canNext}

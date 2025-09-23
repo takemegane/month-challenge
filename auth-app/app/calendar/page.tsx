@@ -1,7 +1,11 @@
 import { CalendarView } from "../../components/CalendarView";
 import { cookies } from "next/headers";
 
-export default async function CalendarPage() {
+type Props = {
+  searchParams: Promise<{ month?: string }>;
+};
+
+export default async function CalendarPage({ searchParams }: Props) {
   // Ensure logged-in; if not, redirect
   const cookieStore = await cookies();
   const token = cookieStore.get('auth-token');
@@ -12,10 +16,14 @@ export default async function CalendarPage() {
       </div>
     );
   }
+
+  const params = await searchParams;
+  const initialMonth = params.month ? `${params.month}-01` : undefined;
+
   return (
     <div className="space-y-4">
       <h1 className="card-title">カレンダー</h1>
-      <CalendarView />
+      <CalendarView initialMonth={initialMonth} />
     </div>
   );
 }

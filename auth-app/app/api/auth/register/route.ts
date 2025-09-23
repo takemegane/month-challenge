@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
     const token = signToken({ sub: user_id, email, name, is_admin: isAdmin, exp: Math.floor(Date.now()/1000) + 60*60*24*30 }, secret);
     const res = NextResponse.json({ user: { id: user_id, email, name, is_admin: isAdmin } });
-    res.cookies.set('auth-token', token, { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60*60*24*30 });
+    res.cookies.set('auth-token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60*60*24*30 });
     return res;
   } catch (e: any) {
     if ((e?.message || '').includes('duplicate key')) return NextResponse.json({ error: 'email_taken' }, { status: 409 });
