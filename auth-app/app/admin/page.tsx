@@ -29,6 +29,23 @@ export default function AdminPage() {
     checkAdminAccess();
   }, []);
 
+  useEffect(() => {
+    if (!profileEditId) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelProfileEdit();
+      }
+    };
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [profileEditId]);
+
   async function checkAdminAccess() {
     try {
       const res = await fetch("/api/auth/me", { credentials: "include" });
@@ -326,50 +343,73 @@ export default function AdminPage() {
       )}
 
       {profileEditId && (
-        <div className="rounded-lg border border-purple-200/70 bg-white p-4 max-w-2xl space-y-4">
-          <h2 className="font-medium text-purple-800">ユーザープロフィール編集</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2 text-sm text-orange-900/80">
-              <span>名前</span>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) cancelProfileEdit();
+          }}
+        >
+          <div className="relative w-full max-w-2xl rounded-2xl border border-purple-200 bg-white p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={cancelProfileEdit}
+              className="absolute right-4 top-4 rounded-full border border-gray-200 bg-white px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+            <h2 className="mb-4 text-lg font-semibold text-purple-900">ユーザープロフィール編集</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-sm text-orange-900/80">
+                <span>名前</span>
+                <input
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full rounded-md border border-orange-200 px-3 py-2"
+                />
+              </label>
+              <label className="space-y-2 text-sm text-orange-900/80">
+                <span>メールアドレス</span>
+                <input
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  className="w-full rounded-md border border-orange-200 px-3 py-2"
+                  type="email"
+                />
+              </label>
+            </div>
+            <label className="mt-4 block space-y-2 text-sm text-orange-900/80">
+              <span>新しいパスワード（必要な場合のみ）</span>
               <input
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
+                value={profilePassword}
+                onChange={(e) => setProfilePassword(e.target.value)}
                 className="w-full rounded-md border border-orange-200 px-3 py-2"
+                type="password"
+                placeholder="変更しない場合は空のまま"
               />
             </label>
-            <label className="space-y-2 text-sm text-orange-900/80">
-              <span>メールアドレス</span>
-              <input
-                value={profileEmail}
-                onChange={(e) => setProfileEmail(e.target.value)}
-                className="w-full rounded-md border border-orange-200 px-3 py-2"
-                type="email"
-              />
-            </label>
-          </div>
-          <label className="space-y-2 text-sm text-orange-900/80 block">
-            <span>新しいパスワード（必要な場合のみ）</span>
-            <input
-              value={profilePassword}
-              onChange={(e) => setProfilePassword(e.target.value)}
-              className="w-full rounded-md border border-orange-200 px-3 py-2"
-              type="password"
-              placeholder="変更しない場合は空のまま"
-            />
-          </label>
-          {profileError && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {profileError}
+            {profileError && (
+              <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {profileError}
+              </div>
+            )}
+            {profileMsg && (
+              <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {profileMsg}
+              </div>
+            )}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button type="button" onClick={submitProfileEdit} className="btn-primary rounded px-4 py-2">
+                保存する
+              </button>
+              <button
+                type="button"
+                onClick={cancelProfileEdit}
+                className="rounded px-4 py-2 border border-orange-300 bg-white text-orange-700 hover:bg-orange-50"
+              >
+                キャンセル
+              </button>
             </div>
-          )}
-          {profileMsg && (
-            <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {profileMsg}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <button type="button" onClick={submitProfileEdit} className="btn-primary rounded px-3 py-2">保存する</button>
-            <button type="button" onClick={cancelProfileEdit} className="rounded px-3 py-2 border border-orange-300 hover:bg-orange-50">キャンセル</button>
           </div>
         </div>
       )}
