@@ -42,6 +42,9 @@ export default function AdminOverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [editUser, setEditUser] = useState<string>("");
+  const [editDate, setEditDate] = useState<string>("");
+  const [editMsg, setEditMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +108,13 @@ export default function AdminOverviewPage() {
 
   const days = useMemo(() => data?.daily.map((d) => d.date) ?? [], [data]);
 
+  useEffect(() => {
+    if (!data?.users?.length) return;
+    if (!editUser) {
+      setEditUser(data.users[0].id);
+    }
+  }, [data, editUser]);
+
   const handleDownloadCsv = async () => {
     try {
       const res = await fetch(`/api/admin/overview?month=${month}&format=csv`, { credentials: "include" });
@@ -122,6 +132,39 @@ export default function AdminOverviewPage() {
       alert(err?.message || "CSVのダウンロードに失敗しました");
     }
   };
+
+  async function handleCheck(update: "add" | "remove") {
+    if (!editUser || !editDate) {
+      setEditMsg("ユーザーと日付を選択してください");
+      return;
+    }
+    setEditMsg(null);
+    try {
+      const res = await fetch('/api/admin/entries', {
+        method: update === 'add' ? 'POST' : 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: editUser, entry_date: editDate }),
+        credentials: 'include',
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setEditMsg(update === 'add'
+          ? (j.status === 'created' ? 'チェックを付与しました' : '既に存在します')
+          : (j.status === 'deleted' ? 'チェックを外しました' : '対象が見つかりません'));
+        // refresh data
+        setLoading(true);
+        fetch(`/api/admin/overview?month=${month}`, { credentials: 'include' })
+          .then(r => r.json())
+          .then(json => setData(json))
+          .catch(() => setData(null))
+          .finally(() => setLoading(false));
+      } else {
+        setEditMsg(j.error || '更新に失敗しました');
+      }
+    } catch (err) {
+      setEditMsg('更新に失敗しました');
+    }
+  }
 
   if (authLoading) {
     return (
@@ -155,8 +198,8 @@ export default function AdminOverviewPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-orange-900/90">チェックサマリー</h1>
-          <p className="text-sm text-orange-900/70">管理者用の全ユーザー一覧です</p>
+          <h1 className="text-2xl font-semibold text-orange-900/90">チェック管理</h1>
+          <p className="text-sm text-orange-900/70">チェック状況と日別の進捗を管理できます</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -192,6 +235,47 @@ export default function AdminOverviewPage() {
         >
           CSVダウンロード
         </button>
+      </div>
+
+      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
+        <h2 className="font-medium">チェック操作</h2>
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">ユーザー</label>
+          <select
+            value={editUser}
+            onChange={(e) => setEditUser(e.target.value)}
+            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
+          >
+            <option value="">選択してください</option>
+            {data?.users?.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+            ))}
+          </select>
+          <label className="block text-sm font-medium text-gray-700">日付</label>
+          <input
+            type="date"
+            value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleCheck('add')}
+              className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+            >
+              チェックを付ける
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCheck('remove')}
+              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+            >
+              チェックを外す
+            </button>
+          </div>
+          {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}
+        </div>
       </div>
 
       {loading && (

@@ -9,9 +9,6 @@ export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  const [editUser, setEditUser] = useState<string>("");
-  const [editDate, setEditDate] = useState<string>("");
-  const [editMsg, setEditMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [adminUser, setAdminUser] = useState<string>("");
@@ -194,58 +191,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleCheckAdd() {
-    setEditMsg(null);
-    if (!editUser || !editDate) {
-      setEditMsg('ユーザーと日付を入力してください');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/entries', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ user_id: editUser, entry_date: editDate }),
-        credentials: 'include'
-      });
-      const j = await res.json();
-      setEditMsg(res.ok ? (j.status === 'created' ? 'チェックを付与しました' : '既に存在します') : (j.error || '失敗しました'));
-    } catch (error) {
-      setEditMsg('ネットワークエラーが発生しました');
-    }
-  }
-
-  async function handleCheckRemove() {
-    setEditMsg(null);
-    if (!editUser || !editDate) {
-      setEditMsg('ユーザーと日付を入力してください');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/entries', {
-        method: 'DELETE',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ user_id: editUser, entry_date: editDate }),
-        credentials: 'include'
-      });
-      const j = await res.json();
-      if (res.ok) {
-        if (j.status === 'deleted') {
-          setEditMsg('チェックを削除しました');
-        } else if (j.status === 'not_found') {
-          setEditMsg('削除対象のチェックが見つかりません');
-        } else {
-          setEditMsg('処理が完了しました');
-        }
-      } else {
-        setEditMsg(j.error || '削除に失敗しました');
-      }
-    } catch (error) {
-      setEditMsg('ネットワークエラーが発生しました');
-    }
-  }
-
   async function deleteUser(userId: string, userName: string) {
     if (!confirm(`${userName} を削除しますか？この操作は取り消せません。`)) return;
 
@@ -332,7 +277,7 @@ export default function AdminPage() {
           href="/admin/overview"
           className="rounded-md border border-purple-200 bg-purple-50 px-3 py-1 text-purple-800 hover:bg-purple-100"
         >
-          集計ページを開く
+          チェック管理へ
         </a>
       </div>
 
@@ -456,48 +401,6 @@ export default function AdminPage() {
           </button>
         </form>
         {msg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{msg}</div>}
-      </div>
-
-      {/* チェック修正 */}
-      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-lg space-y-3">
-        <h2 className="font-medium">チェック修正（付与/削除）</h2>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">ユーザー</label>
-            <select
-              value={editUser}
-              onChange={(e)=>setEditUser(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
-            >
-              <option value="">選択してください</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">日付</label>
-            <input
-              type="date"
-              value={editDate}
-              onChange={(e)=>setEditDate(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleCheckAdd}
-              className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
-            >
-              チェックを付ける
-            </button>
-            <button
-              onClick={handleCheckRemove}
-              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
-            >
-              チェックを外す
-            </button>
-          </div>
-          {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}
-        </div>
       </div>
 
       {/* 管理者権限管理 */}
