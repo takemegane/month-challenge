@@ -108,6 +108,10 @@ export default function AdminOverviewPage() {
 
   const days = useMemo(() => data?.daily.map((d) => d.date) ?? [], [data]);
 
+  const sortedUsers = useMemo(() => {
+    return [...(data?.users || [])].sort((a, b) => a.name.localeCompare(b.name));
+  }, [data?.users]);
+
   useEffect(() => {
     if (!data?.users?.length) return;
     if (!editUser) {
@@ -325,7 +329,7 @@ export default function AdminOverviewPage() {
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
               >
                 <option value="">選択してください</option>
-                {data?.users?.map((u) => (
+                {sortedUsers.map((u) => (
                   <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                 ))}
               </select>
@@ -376,7 +380,7 @@ export default function AdminOverviewPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.users.map((user) => {
+                    {sortedUsers.map((user) => {
                       const marked = new Set(user.dates);
                       return (
                         <tr key={`detail-${user.id}`} className="hover:bg-orange-50/50">
