@@ -4,6 +4,6 @@
       "preview": false,
       "production": true
     },
-    "productionBranch": "ci/ignore-main-build"
+    "productionBranch": "auth-main"
   }
 }
