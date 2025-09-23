@@ -9,5 +9,11 @@
     { "source": "/icons/icon-192.png", "destination": "/icons/icon-192.svg" },
     { "source": "/icons/icon-512.png", "destination": "/icons/icon-512.svg" }
   ],
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ]; then exit 0; else exit 1; fi"
+  "git": {
+    "deploymentEnabled": {
+      "preview": false,
+      "production": true
+    }
+  },
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"ci/ignore-main-build\" ]; then exit 0; else exit 1; fi"
 }
