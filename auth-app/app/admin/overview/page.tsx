@@ -151,13 +151,11 @@ export default function AdminOverviewPage() {
         setEditMsg(update === 'add'
           ? (j.status === 'created' ? 'チェックを付与しました' : '既に存在します')
           : (j.status === 'deleted' ? 'チェックを外しました' : '対象が見つかりません'));
-        // refresh data
-        setLoading(true);
+        // refresh data without full reload
         fetch(`/api/admin/overview?month=${month}`, { credentials: 'include' })
           .then(r => r.json())
           .then(json => setData(json))
-          .catch(() => setData(null))
-          .finally(() => setLoading(false));
+          .catch(() => {});
       } else {
         setEditMsg(j.error || '更新に失敗しました');
       }
@@ -237,46 +235,6 @@ export default function AdminOverviewPage() {
         </button>
       </div>
 
-      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
-        <h2 className="font-medium">チェック操作</h2>
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">ユーザー</label>
-          <select
-            value={editUser}
-            onChange={(e) => setEditUser(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
-          >
-            <option value="">選択してください</option>
-            {data?.users?.map((u) => (
-              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-            ))}
-          </select>
-          <label className="block text-sm font-medium text-gray-700">日付</label>
-          <input
-            type="date"
-            value={editDate}
-            onChange={(e) => setEditDate(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleCheck('add')}
-              className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
-            >
-              チェックを付ける
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCheck('remove')}
-              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
-            >
-              チェックを外す
-            </button>
-          </div>
-          {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}
-        </div>
-      </div>
 
       {loading && (
         <div className="rounded-lg border border-orange-200 bg-white/80 p-6 text-center text-orange-900/80">
@@ -357,48 +315,97 @@ export default function AdminOverviewPage() {
             </div>
           </section>
 
+          <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
+            <h2 className="font-medium">チェック操作</h2>
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">ユーザー</label>
+              <select
+                value={editUser}
+                onChange={(e) => setEditUser(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
+              >
+                <option value="">選択してください</option>
+                {data?.users?.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                ))}
+              </select>
+              <label className="block text-sm font-medium text-gray-700">日付</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCheck('add')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+                >
+                  チェックを付ける
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCheck('remove')}
+                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                >
+                  チェックを外す
+                </button>
+              </div>
+              {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}
+            </div>
+          </div>
+
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-orange-900/90">日別チェック状況</h2>
-              <div className="text-sm text-orange-900/70">スクロールで全日表示できます</div>
+              <div className="text-sm text-orange-900/70">6行表示・縦スクロール対応</div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0 text-xs">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-orange-900/80">ユーザー</th>
-                    <th className="px-3 py-2 text-right font-medium text-orange-900/80">件数</th>
-                    {days.map((day) => (
-                      <th key={day} className="px-2 py-2 font-medium text-orange-900/70">
-                        {Number(day.slice(-2))}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.users.map((user) => {
-                    const marked = new Set(user.dates);
-                    return (
-                      <tr key={`detail-${user.id}`}>
-                        <td className="sticky left-0 bg-white px-3 py-2 text-left font-medium text-orange-900/90">
-                          {user.name}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-orange-900/80">
-                          {user.total}
-                        </td>
-                        {days.map((day) => (
-                          <td key={`${user.id}-${day}`} className="px-2 py-1">
-                            <div
-                              className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
-                              aria-label={marked.has(day) ? "チェック済" : "未チェック"}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-separate border-spacing-0 text-xs">
+                  <thead className="bg-orange-50">
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-orange-50 px-3 py-2 text-left font-medium text-orange-900/80 border-r border-orange-200">ユーザー</th>
+                      <th className="px-3 py-2 text-right font-medium text-orange-900/80 border-r border-orange-200">件数</th>
+                      {days.map((day) => (
+                        <th key={day} className="px-2 py-2 font-medium text-orange-900/70">
+                          {Number(day.slice(-2))}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+              <div className="max-h-[12rem] overflow-y-auto">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-separate border-spacing-0 text-xs">
+                    <tbody>
+                      {data.users.map((user) => {
+                        const marked = new Set(user.dates);
+                        return (
+                          <tr key={`detail-${user.id}`} className="hover:bg-orange-25">
+                            <td className="sticky left-0 bg-white px-3 py-2 text-left font-medium text-orange-900/90 border-r border-orange-200">
+                              {user.name}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-orange-900/80 border-r border-orange-200">
+                              {user.total}
+                            </td>
+                            {days.map((day) => (
+                              <td key={`${user.id}-${day}`} className="px-2 py-1">
+                                <div
+                                  className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
+                                  aria-label={marked.has(day) ? "チェック済" : "未チェック"}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </section>
         </>
