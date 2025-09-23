@@ -85,12 +85,6 @@ export default function Header() {
               >
                 一覧
               </a>
-              <a
-                href="/account"
-                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
-              >
-                アカウント
-              </a>
               {user.is_admin && (
                 <>
                   <a
@@ -109,7 +103,12 @@ export default function Header() {
               )}
             </nav>
             <div className="flex items-center gap-2 text-base">
-              <span className="text-orange-800 font-medium">{user.name}</span>
+              <a
+                href="/account"
+                className="px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-900 font-semibold rounded-lg transition border border-orange-200 hover:border-orange-300"
+              >
+                {user.name}
+              </a>
               <button
                 onClick={handleLogout}
                 className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-medium rounded transition border border-red-200 hover:border-red-300 text-sm"
@@ -126,7 +125,12 @@ export default function Header() {
           <div className="flex items-center justify-between">
             <a href="/calendar" className="font-semibold tracking-tight text-xl text-orange-800">月チャレ</a>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-orange-800 font-medium">{user.name}</span>
+              <a
+                href="/account"
+                className="px-3 py-1 bg-orange-50 hover:bg-orange-100 text-orange-900 font-semibold rounded-lg transition border border-orange-200 hover:border-orange-300"
+              >
+                {user.name}
+              </a>
               <button
                 onClick={handleLogout}
                 className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-medium rounded transition border border-red-200 hover:border-red-300 text-xs"
@@ -149,12 +153,6 @@ export default function Header() {
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               一覧
-            </a>
-            <a
-              href="/account"
-              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
-            >
-              アカウント
             </a>
             {user.is_admin && (
               <>
