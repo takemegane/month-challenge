@@ -5,5 +5,11 @@
       "production": true
     },
     "productionBranch": "main"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sync",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }

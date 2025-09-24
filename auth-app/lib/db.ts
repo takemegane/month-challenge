@@ -4,6 +4,8 @@ import { getRedisClient } from "./redis";
 const DATABASE_URL = process.env.DATABASE_URL_AUTH || process.env.DATABASE_URL;
 const REDIS_URL = process.env.REDIS_URL;
 const useRedis = !!REDIS_URL;
+const useNeon = !!DATABASE_URL;
+const useDualWrite = useRedis && useNeon; // デュアル書き込み有効
 const useMock = !DATABASE_URL && !REDIS_URL;
 let neonClient: (<T>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>) | null = null;
 
@@ -189,6 +191,49 @@ async function mockQuery<T = any>(strings: TemplateStringsArray, ...values: any[
   }
 
   return [] as T[];
+}
+
+// ---- Utility functions ----
+
+function isWriteOperation(sql: string): boolean {
+  const lowerSql = sql.toLowerCase().trim();
+  return lowerSql.startsWith('insert') ||
+         lowerSql.startsWith('update') ||
+         lowerSql.startsWith('delete');
+}
+
+async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[]): Promise<T[]> {
+  const sql = strings.join("?").trim().toLowerCase();
+  let redisResult: T[] = [];
+  let neonError: Error | null = null;
+
+  // Primary write to Redis
+  try {
+    redisResult = await redisQuery<T>(strings, ...values);
+  } catch (error) {
+    console.error('Redis write failed:', error);
+    // If Redis fails, fall back to Neon only
+    if (useNeon) {
+      const neonClient = await getNeonClient();
+      return neonClient<T>(strings, ...values);
+    }
+    throw error;
+  }
+
+  // Backup write to Neon (async, don't block main operation)
+  if (useNeon) {
+    setImmediate(async () => {
+      try {
+        const neonClient = await getNeonClient();
+        await neonClient<T>(strings, ...values);
+      } catch (error) {
+        console.error('Neon backup write failed:', error);
+        // Log for monitoring but don't fail the operation
+      }
+    });
+  }
+
+  return redisResult;
 }
 
 // ---- Redis functions ----
@@ -386,13 +431,35 @@ async function redisQuery<T = any>(strings: TemplateStringsArray, ...values: any
 // ----------------------------------------------------------------------
 
 export async function query<T = any>(strings: TemplateStringsArray, ...values: any[]): Promise<T[]> {
+  const sql = strings.join("?").trim();
+
+  // Use dual write for write operations when both Redis and Neon are available
+  if (useDualWrite && isWriteOperation(sql)) {
+    return dualWrite<T>(strings, ...values);
+  }
+
+  // For read operations or single storage, prioritize Redis
   if (useRedis) {
-    return redisQuery<T>(strings, ...values);
+    try {
+      return await redisQuery<T>(strings, ...values);
+    } catch (error) {
+      console.error('Redis query failed, falling back to Neon:', error);
+      // Fall back to Neon if Redis fails
+      if (useNeon) {
+        const neonClient = await getNeonClient();
+        return neonClient<T>(strings, ...values);
+      }
+      throw error;
+    }
   }
-  if (!useMock) {
-    const sql = await getNeonClient();
+
+  // Use Neon if Redis is not available
+  if (useNeon) {
+    const neonClient = await getNeonClient();
     // @ts-ignore neon template tag signature matches
-    return sql<T>(strings, ...values);
+    return neonClient<T>(strings, ...values);
   }
+
+  // Final fallback to in-memory
   return await mockQuery<T>(strings, ...values);
 }
