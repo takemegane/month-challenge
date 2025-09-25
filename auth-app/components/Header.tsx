@@ -8,7 +8,7 @@ export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
   const { user, isLoading } = useUser();
-  const { prefetchCalendar, prefetchList } = usePrefetch();
+  const { prefetchCalendar, prefetchList, prefetchAdmin } = usePrefetch();
 
   // Generate current month for calendar reset
   const currentMonthPath = useMemo(() => {
@@ -79,6 +79,8 @@ export default function Header() {
                 <>
                   <Link
                     href="/admin"
+                    prefetch={true}
+                    onMouseEnter={prefetchAdmin}
                     className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     ユーザー設定
@@ -152,6 +154,8 @@ export default function Header() {
               <>
                 <Link
                   href="/admin"
+                  prefetch={true}
+                  onTouchStart={prefetchAdmin}
                   className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   ユーザー設定

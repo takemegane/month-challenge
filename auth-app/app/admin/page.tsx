@@ -1,19 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useUser, useUsers } from "../../hooks/use-api";
 
 type User = { id: string; name: string; email: string; is_admin?: boolean };
 
 export default function AdminPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const { user: currentUser, isLoading: userLoading } = useUser();
+  const { users, isLoading: usersLoading, isError: usersError, mutate: mutateUsers } = useUsers();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [adminUser, setAdminUser] = useState<string>("");
   const [adminMsg, setAdminMsg] = useState<string | null>(null);
-  const [userListError, setUserListError] = useState<string | null>(null);
   const [profileEditId, setProfileEditId] = useState<string>("");
   const [profileName, setProfileName] = useState<string>("");
   const [profileEmail, setProfileEmail] = useState<string>("");
@@ -22,9 +21,9 @@ export default function AdminPage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileOriginal, setProfileOriginal] = useState<User | null>(null);
 
-  useEffect(() => {
-    checkAdminAccess();
-  }, []);
+  // Check admin authorization based on current user
+  const isAuthorized = currentUser?.is_admin || false;
+  const isLoading = userLoading;
 
   useEffect(() => {
     if (!profileEditId) return;
@@ -43,54 +42,6 @@ export default function AdminPage() {
     };
   }, [profileEditId]);
 
-  async function checkAdminAccess() {
-    try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.user && data.user.is_admin) {
-          setIsAuthorized(true);
-          loadUsers();
-        } else {
-          setIsAuthorized(false);
-        }
-      } else {
-        setIsAuthorized(false);
-      }
-    } catch (error) {
-      setIsAuthorized(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function loadUsers() {
-    try {
-      const res = await fetch("/api/admin/users", { cache: "no-store", credentials: 'include' });
-      if (res.ok) {
-        const json = await res.json();
-        setUsers(json.users || []);
-        setUserListError(null);
-        if (profileEditId) {
-          const updated = json.users?.find((u: User) => u.id === profileEditId);
-          if (updated) {
-            setProfileName(updated.name);
-            setProfileEmail(updated.email);
-            setProfileOriginal(updated);
-          }
-        }
-      } else {
-        if (res.status === 401 || res.status === 403) {
-          setUserListError("ユーザー一覧を取得できませんでした。管理者権限が付与された直後の場合は、一度サインインし直してください。");
-        } else {
-          setUserListError("ユーザー一覧の取得に失敗しました。時間をおいて再度お試しください。");
-        }
-        setUsers([]);
-      }
-    } catch (error) {
-      setUserListError("ユーザー一覧の取得中にエラーが発生しました");
-    }
-  }
 
   function beginProfileEdit(user: User) {
     setProfileEditId(user.id);
@@ -140,7 +91,7 @@ export default function AdminPage() {
       if (res.ok) {
         setProfileMsg('プロフィールを更新しました');
         setProfilePassword('');
-        loadUsers();
+        mutateUsers();
       } else {
         const code = data?.error || 'update_failed';
         if (code === 'email_taken') {
@@ -179,7 +130,7 @@ export default function AdminPage() {
         setEmail("");
         setPassword("");
         setMsg("ユーザーを作成しました");
-        loadUsers();
+        mutateUsers();
       } else {
         setMsg(j.error || "作成に失敗しました");
       }
@@ -200,7 +151,7 @@ export default function AdminPage() {
 
       if (res.ok) {
         setMsg('ユーザーを削除しました');
-        loadUsers();
+        mutateUsers();
       } else {
         setMsg(j.error || '削除に失敗しました');
       }
@@ -223,7 +174,7 @@ export default function AdminPage() {
 
       if (res.ok) {
         setAdminMsg(currentIsAdmin ? '管理者権限を剥奪しました' : '管理者権限を付与しました');
-        loadUsers(); // Reload user list
+        mutateUsers(); // Reload user list
       } else {
         setAdminMsg(j.error || '権限変更に失敗しました');
       }
@@ -273,9 +224,9 @@ export default function AdminPage() {
         </a>
       </div>
 
-      {userListError && (
+      {usersError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {userListError}
+          ユーザー一覧を取得できませんでした。管理者権限が付与された直後の場合は、一度サインインし直してください。
         </div>
       )}
 
@@ -408,8 +359,16 @@ export default function AdminPage() {
       <div className="rounded-lg border border-orange-200/70 bg-white p-4">
         <h2 className="font-medium mb-4">ユーザー一覧</h2>
         <div className="space-y-2">
-          {users.length === 0 ? (
-            <p className="text-gray-500">ユーザーが登録されていません</p>
+          {usersLoading ? (
+            <div className="text-gray-500 py-4 text-center">
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+              </div>
+            </div>
+          ) : users.length === 0 ? (
+            <p className="text-gray-500 py-4 text-center">ユーザーが登録されていません</p>
           ) : (
             users.map((u) => (
               <div key={u.id} className="flex items-center justify-between gap-3 border-b border-orange-200/60 py-2">

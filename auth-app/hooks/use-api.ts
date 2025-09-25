@@ -241,6 +241,12 @@ export function prefetchMonthlySummaryData() {
   preload(`/api/entries?since=${since}&until=${until}`, fetcher);
 }
 
+// Prefetch admin users data
+export function prefetchAdminData() {
+  // Preload admin users list
+  preload('/api/admin/users', fetcher);
+}
+
 // Hook for intelligent prefetching based user navigation patterns
 export function usePrefetch() {
   return {
@@ -249,5 +255,6 @@ export function usePrefetch() {
       prefetchListData();
       prefetchMonthlySummaryData();
     },
+    prefetchAdmin: prefetchAdminData,
   };
 }
