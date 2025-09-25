@@ -1,21 +1,35 @@
 "use client";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { useUser, usePrefetch } from "../hooks/use-api";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  is_admin?: boolean;
+}
 
 export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
-  const { user, isLoading } = useUser();
-  const { prefetchCalendar, prefetchList, prefetchAdmin, prefetchOverview } = usePrefetch();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Generate current month for calendar reset
-  const currentMonthPath = useMemo(() => {
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    const currentMonth = today.toISOString().slice(0, 7);
-    return `/calendar?month=${currentMonth}`;
-  }, []);
+  useEffect(() => {
+    if (!isAuth) {
+      fetch("/api/auth/me", { credentials: "include" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            setUser(data.user);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
+    }
+  }, [isAuth]);
 
   const handleLogout = async () => {
     try {
@@ -56,53 +70,45 @@ export default function Header() {
       <div className="mx-auto max-w-4xl px-4 py-3">
         {/* Desktop layout */}
         <div className="hidden sm:flex items-center justify-between">
-          <Link href="/calendar" className="font-semibold tracking-tight text-2xl text-orange-800">月チャレ</Link>
+          <a href="/calendar" className="font-semibold tracking-tight text-2xl text-orange-800">月チャレ</a>
           <div className="flex items-center gap-4">
             <nav className="flex flex-wrap gap-3">
-              <Link
-                href={currentMonthPath}
-                prefetch={true}
-                onMouseEnter={prefetchCalendar}
+              <a
+                href="/calendar"
                 className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 今月のカレンダー
-              </Link>
-              <Link
+              </a>
+              <a
                 href="/list"
-                prefetch={true}
-                onMouseEnter={prefetchList}
                 className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 一覧
-              </Link>
+              </a>
               {user.is_admin && (
                 <>
-                  <Link
+                  <a
                     href="/admin"
-                    prefetch={true}
-                    onMouseEnter={prefetchAdmin}
                     className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     ユーザー設定
-                  </Link>
-                  <Link
+                  </a>
+                  <a
                     href="/admin/overview"
-                    prefetch={true}
-                    onMouseEnter={prefetchOverview}
                     className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover-border-purple-300 text-base"
                   >
                     チェック管理
-                  </Link>
+                  </a>
                 </>
               )}
             </nav>
             <div className="flex items-center gap-2 text-base">
-              <Link
+              <a
                 href="/account"
                 className="px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-900 font-semibold rounded-lg transition border border-orange-200 hover:border-orange-300"
               >
                 {user.name}
-              </Link>
+              </a>
               <button
                 onClick={handleLogout}
                 className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-medium rounded transition border border-red-200 hover:border-red-300 text-sm"
@@ -117,14 +123,14 @@ export default function Header() {
         <div className="sm:hidden space-y-3">
           {/* Top row: Title and user info */}
           <div className="flex items-center justify-between">
-            <Link href="/calendar" className="font-semibold tracking-tight text-xl text-orange-800">月チャレ</Link>
+            <a href="/calendar" className="font-semibold tracking-tight text-xl text-orange-800">月チャレ</a>
             <div className="flex items-center gap-2 text-sm">
-              <Link
+              <a
                 href="/account"
                 className="px-3 py-1 bg-orange-50 hover:bg-orange-100 text-orange-900 font-semibold rounded-lg transition border border-orange-200 hover:border-orange-300"
               >
                 {user.name}
-              </Link>
+              </a>
               <button
                 onClick={handleLogout}
                 className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-medium rounded transition border border-red-200 hover:border-red-300 text-xs"
@@ -136,40 +142,32 @@ export default function Header() {
 
           {/* Bottom row: Navigation buttons */}
           <nav className="grid grid-cols-2 gap-2">
-            <Link
-              href={currentMonthPath}
-              prefetch={true}
-              onTouchStart={prefetchCalendar}
+            <a
+              href="/calendar"
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               今月のカレンダー
-            </Link>
-            <Link
+            </a>
+            <a
               href="/list"
-              prefetch={true}
-              onTouchStart={prefetchList}
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               一覧
-            </Link>
+            </a>
             {user.is_admin && (
               <>
-                <Link
+                <a
                   href="/admin"
-                  prefetch={true}
-                  onTouchStart={prefetchAdmin}
                   className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   ユーザー設定
-                </Link>
-                <Link
+                </a>
+                <a
                   href="/admin/overview"
-                  prefetch={true}
-                  onTouchStart={prefetchOverview}
                   className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover-border-purple-300 text-center text-sm"
                 >
                   チェック管理
-                </Link>
+                </a>
               </>
             )}
           </nav>

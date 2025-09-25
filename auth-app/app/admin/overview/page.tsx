@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useUser, useOverview, useCheckOperation } from "../../../hooks/use-api";
 
 function formatMonthLabel(month: string) {
   const [year, m] = month.split("-");
@@ -36,75 +37,21 @@ type OverviewResponse = {
 };
 
 export default function AdminOverviewPage() {
+  const { user: currentUser, isLoading: userLoading } = useUser();
   const [month, setMonth] = useState<string>(getCurrentMonth());
-  const [data, setData] = useState<OverviewResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const { overview, isLoading: overviewLoading, isError: overviewError } = useOverview(month);
+  const { performCheck, isUpdating, error: checkError } = useCheckOperation();
   const [editUser, setEditUser] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
   const [editMsg, setEditMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setAuthLoading(true);
-    setIsAuthorized(false);
-    fetch("/api/auth/me", { credentials: "include" })
-      .then((res) => res.json().catch(() => ({})))
-      .then((json) => {
-        if (!cancelled) {
-          if (json?.user?.is_admin) {
-            setIsAuthorized(true);
-          } else {
-            setIsAuthorized(false);
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setIsAuthorized(false);
-      })
-      .finally(() => {
-        if (!cancelled) setAuthLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Check admin authorization based on current user
+  const isAuthorized = currentUser?.is_admin || false;
+  const authLoading = userLoading;
+  const loading = overviewLoading;
+  const error = overviewError ? "データの取得に失敗しました" : null;
+  const data = overview;
 
-  useEffect(() => {
-    if (!isAuthorized) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    const controller = new AbortController();
-    fetch(`/api/admin/overview?month=${month}`, { credentials: "include", signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error || `ステータス ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((json) => {
-        if (!cancelled) setData(json);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err?.message || "データの取得に失敗しました");
-          setData(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [month, isAuthorized]);
 
   const days = useMemo(() => data?.daily.map((d) => d.date) ?? [], [data]);
 
@@ -112,12 +59,12 @@ export default function AdminOverviewPage() {
     return [...(data?.users || [])].sort((a, b) => a.name.localeCompare(b.name));
   }, [data?.users]);
 
-  useEffect(() => {
-    if (!data?.users?.length) return;
-    if (!editUser) {
+  // Auto-select first user when data loads
+  useMemo(() => {
+    if (data?.users?.length && !editUser) {
       setEditUser(data.users[0].id);
     }
-  }, [data, editUser]);
+  }, [data?.users, editUser]);
 
   const handleDownloadCsv = async () => {
     try {
@@ -143,28 +90,21 @@ export default function AdminOverviewPage() {
       return;
     }
     setEditMsg(null);
+
     try {
-      const res = await fetch('/api/admin/entries', {
-        method: update === 'add' ? 'POST' : 'DELETE',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ user_id: editUser, entry_date: editDate }),
-        credentials: 'include',
+      const result = await performCheck({
+        action: update,
+        user_id: editUser,
+        entry_date: editDate,
+        month
       });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setEditMsg(update === 'add'
-          ? (j.status === 'created' ? 'チェックを付与しました' : '既に存在します')
-          : (j.status === 'deleted' ? 'チェックを外しました' : '対象が見つかりません'));
-        // refresh data without full reload
-        fetch(`/api/admin/overview?month=${month}`, { credentials: 'include' })
-          .then(r => r.json())
-          .then(json => setData(json))
-          .catch(() => {});
-      } else {
-        setEditMsg(j.error || '更新に失敗しました');
-      }
-    } catch (err) {
-      setEditMsg('更新に失敗しました');
+
+      setEditMsg(update === 'add'
+        ? (result.status === 'created' ? 'チェックを付与しました' : '既に存在します')
+        : (result.status === 'deleted' ? 'チェックを外しました' : '対象が見つかりません'));
+    } catch (err: any) {
+      const errorInfo = err?.info || {};
+      setEditMsg(errorInfo.error || '更新に失敗しました');
     }
   }
 
@@ -344,16 +284,18 @@ export default function AdminOverviewPage() {
                 <button
                   type="button"
                   onClick={() => handleCheck('add')}
-                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+                  disabled={isUpdating}
+                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  チェックを付ける
+                  {isUpdating ? '更新中...' : 'チェックを付ける'}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleCheck('remove')}
-                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                  disabled={isUpdating}
+                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  チェックを外す
+                  {isUpdating ? '更新中...' : 'チェックを外す'}
                 </button>
               </div>
               {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}

@@ -247,6 +247,71 @@ export function prefetchAdminData() {
   preload('/api/admin/users', fetcher);
 }
 
+// Prefetch admin overview data
+export function prefetchOverviewData(month?: string) {
+  const currentMonth = month || new Date().toISOString().slice(0, 7);
+  preload(`/api/admin/overview?month=${currentMonth}`, fetcher);
+}
+
+// Overview data hook
+export function useOverview(month?: string) {
+  const key = month ? `/api/admin/overview?month=${month}` : null;
+  const { data, error, isLoading, mutate } = useSWR(key, fetcher);
+
+  return {
+    overview: data,
+    isLoading,
+    isError: !!error,
+    mutate
+  };
+}
+
+// Check operation hook with optimistic updates
+export function useCheckOperation() {
+  const { mutate } = useSWRConfig();
+
+  const { trigger, isMutating, error } = useSWRMutation(
+    '/api/admin/entries',
+    async (url: string, { arg }: { arg: { action: 'add' | 'remove'; user_id: string; entry_date: string; month: string } }) => {
+      const res = await fetch(url, {
+        method: arg.action === 'add' ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: arg.user_id, entry_date: arg.entry_date }),
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const error = new Error('HTTP Error');
+        (error as any).status = res.status;
+        (error as any).info = await res.json().catch(() => ({}));
+        throw error;
+      }
+
+      return res.json();
+    },
+    {
+      onSuccess: (data, key, config) => {
+        const { month } = config.arg;
+        // Invalidate overview data for the specific month
+        mutate(`/api/admin/overview?month=${month}`, undefined, { revalidate: true });
+
+        // Also invalidate entries data that might be cached
+        mutate(
+          key => typeof key === 'string' && key.startsWith('/api/entries'),
+          undefined,
+          { revalidate: true }
+        );
+      },
+    }
+  );
+
+  return {
+    performCheck: trigger,
+    isUpdating: isMutating,
+    error
+  };
+}
+
 // Hook for intelligent prefetching based user navigation patterns
 export function usePrefetch() {
   return {
@@ -256,5 +321,6 @@ export function usePrefetch() {
       prefetchMonthlySummaryData();
     },
     prefetchAdmin: prefetchAdminData,
+    prefetchOverview: prefetchOverviewData,
   };
 }
