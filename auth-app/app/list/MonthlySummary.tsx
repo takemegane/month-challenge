@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useEntries } from "../../hooks/use-api";
 
-type R = "3m" | "6m";
 
 function firstOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -18,61 +18,50 @@ function keyMonth(d: Date) {
 }
 
 export default function MonthlySummary() {
-  const router = useRouter();
-  const [range] = useState<R>("6m");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [counts, setCounts] = useState<Record<string, number>>({}); // key: YYYY-MM
+  const router = useRouter(); // key: YYYY-MM
 
   const months = useMemo(() => {
-    const now = new Date();
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
     const list: Date[] = [];
-    const span = range === "3m" ? 3 : 6;
+    const span = 6;
     for (let i = span - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setMonth(d.getMonth() - i);
       list.push(firstOfMonth(d));
     }
     return list;
-  }, [range]);
+  }, []);
 
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      // Fetch single range and aggregate client-side
-      const sinceDate = firstOfMonth(months[0]);
-      const untilDate = lastOfMonth(months[months.length - 1]);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const since = `${sinceDate.getFullYear()}-${pad(sinceDate.getMonth() + 1)}-01`;
-      const until = `${untilDate.getFullYear()}-${pad(untilDate.getMonth() + 1)}-${pad(untilDate.getDate())}`;
-      const params = new URLSearchParams({ since, until });
-      const res = await fetch(`/api/entries?${params}`, { cache: "no-store", credentials: 'include' });
-      if (!res.ok) throw new Error("読み込みに失敗しました");
-      const json = await res.json();
-      const entries: { entry_date: string }[] = Array.isArray(json.entries) ? json.entries : [];
-      const map: Record<string, number> = {};
-      for (const e of entries) {
-        const dstr = String(e.entry_date).slice(0, 7); // YYYY-MM
-        map[dstr] = (map[dstr] || 0) + 1;
-      }
-      setCounts(map);
-    } catch (e: any) {
-      setCounts({});
-      setError(e.message || "エラー");
-    } finally {
-      setLoading(false);
+  // Calculate date range for SWR query
+  const { since, until } = useMemo(() => {
+    if (months.length === 0) return { since: '', until: '' };
+    const sinceDate = firstOfMonth(months[0]);
+    const untilDate = lastOfMonth(months[months.length - 1]);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const since = `${sinceDate.getFullYear()}-${pad(sinceDate.getMonth() + 1)}-01`;
+    const until = `${untilDate.getFullYear()}-${pad(untilDate.getMonth() + 1)}-${pad(untilDate.getDate())}`;
+    return { since, until };
+  }, [months]);
+
+  // Use SWR for data fetching with caching
+  const { entries, isLoading, isError } = useEntries(undefined, since, until);
+
+  // Aggregate entries by month
+  const counts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of entries) {
+      const dstr = String(e.entry_date).slice(0, 7); // YYYY-MM
+      map[dstr] = (map[dstr] || 0) + 1;
     }
-  }
-
-  useEffect(() => { if (months.length) load(); /* eslint-disable-next-line */ }, [range, months.length]);
+    return map;
+  }, [entries]);
 
   return (
     <div className="space-y-5">
-      {loading ? (
+      {isLoading ? (
         <div className="text-orange-900/70">読み込み中...</div>
-      ) : error ? (
-        <div className="text-red-600">{error}</div>
+      ) : isError ? (
+        <div className="text-red-600">読み込みに失敗しました</div>
       ) : (
         <div className="space-y-2">
           {months.map((d) => {

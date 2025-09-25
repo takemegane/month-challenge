@@ -224,10 +224,30 @@ export function prefetchListData() {
   preload('/api/entries', fetcher);
 }
 
-// Hook for intelligent prefetching based on user navigation patterns
+// Prefetch 6 months of data for list view
+export function prefetchMonthlySummaryData() {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+
+  // Calculate 6 months range
+  const span = 6;
+  const firstMonth = new Date(now.getFullYear(), now.getMonth() - (span - 1), 1);
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const since = `${firstMonth.getFullYear()}-${pad(firstMonth.getMonth() + 1)}-01`;
+  const until = `${lastMonth.getFullYear()}-${pad(lastMonth.getMonth() + 1)}-${pad(lastMonth.getDate())}`;
+
+  // Preload 6 months data for MonthlySummary
+  preload(`/api/entries?since=${since}&until=${until}`, fetcher);
+}
+
+// Hook for intelligent prefetching based user navigation patterns
 export function usePrefetch() {
   return {
     prefetchCalendar: prefetchCalendarData,
-    prefetchList: prefetchListData,
+    prefetchList: () => {
+      prefetchListData();
+      prefetchMonthlySummaryData();
+    },
   };
 }

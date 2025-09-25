@@ -2,12 +2,20 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useUser, usePrefetch } from "../hooks/use-api";
+import { useMemo } from "react";
 
 export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
   const { user, isLoading } = useUser();
   const { prefetchCalendar, prefetchList } = usePrefetch();
+
+  // Generate current month for calendar reset
+  const currentMonthPath = useMemo(() => {
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    const currentMonth = today.toISOString().slice(0, 7);
+    return `/calendar?month=${currentMonth}`;
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -52,7 +60,7 @@ export default function Header() {
           <div className="flex items-center gap-4">
             <nav className="flex flex-wrap gap-3">
               <Link
-                href="/calendar"
+                href={currentMonthPath}
                 prefetch={true}
                 onMouseEnter={prefetchCalendar}
                 className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
@@ -125,7 +133,7 @@ export default function Header() {
           {/* Bottom row: Navigation buttons */}
           <nav className="grid grid-cols-2 gap-2">
             <Link
-              href="/calendar"
+              href={currentMonthPath}
               prefetch={true}
               onTouchStart={prefetchCalendar}
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
