@@ -20,10 +20,13 @@ export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
   const initialMonth = params.month ? `${params.month}-01` : undefined;
 
+  // Generate unique key to force component remount when month changes
+  const resetKey = params.month ? `calendar-${params.month}` : 'calendar-current';
+
   return (
     <div className="space-y-4">
       <h1 className="card-title">カレンダー</h1>
-      <CalendarView initialMonth={initialMonth} />
+      <CalendarView key={resetKey} initialMonth={initialMonth} />
     </div>
   );
 }
