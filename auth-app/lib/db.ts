@@ -1,6 +1,10 @@
 import { hashPassword } from "./crypto";
 import { getRedisClient } from "./redis";
 import { logger } from "./logger";
+import { initializeConnections } from "./connection-manager";
+
+// Initialize connection cleanup
+initializeConnections();
 
 const DATABASE_URL = process.env.DATABASE_URL_AUTH || process.env.DATABASE_URL;
 const REDIS_URL = process.env.REDIS_URL;
@@ -8,17 +12,58 @@ const useRedis = !!REDIS_URL;
 const useNeon = !!DATABASE_URL;
 const useDualWrite = useRedis && useNeon; // デュアル書き込み有効
 const useMock = !DATABASE_URL && !REDIS_URL;
-let neonClient: (<T>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>) | null = null;
+
+// Global Neon client for serverless persistence
+declare global {
+  var __neonClient: (<T>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>) | undefined;
+}
 
 async function getNeonClient() {
   if (!DATABASE_URL) {
     throw new Error("DATABASE_URL_AUTH (or DATABASE_URL) is not set");
   }
-  if (!neonClient) {
-    const { neon } = await import("@neondatabase/serverless");
-    neonClient = neon(DATABASE_URL);
+
+  // Use global variable for serverless function reuse
+  if (!globalThis.__neonClient) {
+    logger.debug('Creating new Neon client');
+
+    try {
+      const { neon } = await import("@neondatabase/serverless");
+
+      // Create Neon client with serverless optimization
+      globalThis.__neonClient = neon(DATABASE_URL, {
+        arrayMode: false,
+        fullResults: false,
+      });
+
+      logger.debug('Neon client created successfully');
+
+      // Test connection on creation
+      await globalThis.__neonClient`SELECT 1 as test`;
+
+    } catch (error) {
+      logger.error('Failed to create Neon client:', error);
+      globalThis.__neonClient = undefined;
+      throw error;
+    }
   }
-  return neonClient;
+
+  return globalThis.__neonClient;
+}
+
+// Connection health check for Neon
+export async function ensureNeonConnection() {
+  try {
+    const client = await getNeonClient();
+    // Quick health check
+    await client`SELECT 1 as health_check`;
+    return client;
+  } catch (error) {
+    logger.warn('Neon connection health check failed, recreating...', error);
+    // Reset client and retry once
+    globalThis.__neonClient = undefined;
+    return getNeonClient();
+  }
 }
 
 // ---- In-memory fallback (used only when DATABASE_URL is missing) ----
@@ -215,7 +260,7 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
     logger.error('Redis write failed:', error);
     // If Redis fails, fall back to Neon only
     if (useNeon) {
-      const neonClient = await getNeonClient();
+      const neonClient = await ensureNeonConnection();
       return neonClient<T>(strings, ...values);
     }
     throw error;
@@ -225,7 +270,7 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
   if (useNeon) {
     setImmediate(async () => {
       try {
-        const neonClient = await getNeonClient();
+        const neonClient = await ensureNeonConnection();
         await neonClient<T>(strings, ...values);
       } catch (error) {
         logger.error('Neon backup write failed:', error);
@@ -447,7 +492,7 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
       logger.error('Redis query failed, falling back to Neon:', error);
       // Fall back to Neon if Redis fails
       if (useNeon) {
-        const neonClient = await getNeonClient();
+        const neonClient = await ensureNeonConnection();
         return neonClient<T>(strings, ...values);
       }
       throw error;
@@ -456,7 +501,7 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
 
   // Use Neon if Redis is not available
   if (useNeon) {
-    const neonClient = await getNeonClient();
+    const neonClient = await ensureNeonConnection();
     // @ts-ignore neon template tag signature matches
     return neonClient<T>(strings, ...values);
   }

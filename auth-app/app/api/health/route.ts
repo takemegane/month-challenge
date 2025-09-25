@@ -19,6 +19,16 @@ export async function GET(req: Request) {
         environment: process.env.NODE_ENV,
         redisConfigured: !!process.env.REDIS_URL,
         neonConfigured: !!process.env.DATABASE_URL_AUTH
+      },
+      connections: {
+        redis: {
+          pooled: !!globalThis.__redis,
+          status: globalThis.__redis ? 'reused' : 'not_initialized'
+        },
+        neon: {
+          pooled: !!globalThis.__neonClient,
+          status: globalThis.__neonClient ? 'reused' : 'not_initialized'
+        }
       }
     }, {
       status: overall ? 200 : 503,

@@ -39,9 +39,11 @@ export async function checkDatabaseHealth(): Promise<HealthStatus> {
   try {
     const DATABASE_URL = process.env.DATABASE_URL_AUTH;
     if (DATABASE_URL) {
-      const sql = neon(DATABASE_URL);
+      // Import ensureNeonConnection from db module
+      const { ensureNeonConnection } = await import('./db');
+      const sql = await ensureNeonConnection();
       const result = await sql`SELECT 1 as health_check`;
-      status.neon.healthy = result.length > 0 && result[0].health_check === 1;
+      status.neon.healthy = result.length > 0 && (result[0] as any).health_check === 1;
     }
   } catch (error) {
     status.neon.error = error instanceof Error ? error.message : 'Unknown Neon error';
