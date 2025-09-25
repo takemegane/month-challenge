@@ -56,21 +56,8 @@ export async function getRedisClient(): Promise<RedisClientType> {
     }
   }
 
-  // Health check on existing connection
-  try {
-    if (globalThis.__redis.isReady) {
-      return globalThis.__redis;
-    } else {
-      // Connection lost, recreate
-      logger.warn('Redis connection not ready, recreating...');
-      await closeRedis();
-      return getRedisClient(); // Recursive call to recreate
-    }
-  } catch (error) {
-    logger.error('Redis health check failed:', error);
-    await closeRedis();
-    return getRedisClient(); // Recursive call to recreate
-  }
+  // Fast return for existing connection
+  return globalThis.__redis;
 }
 
 export async function closeRedis(): Promise<void> {

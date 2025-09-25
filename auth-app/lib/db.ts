@@ -38,9 +38,6 @@ async function getNeonClient() {
 
       logger.debug('Neon client created successfully');
 
-      // Test connection on creation
-      await globalThis.__neonClient`SELECT 1 as test`;
-
     } catch (error) {
       logger.error('Failed to create Neon client:', error);
       globalThis.__neonClient = undefined;
@@ -51,19 +48,9 @@ async function getNeonClient() {
   return globalThis.__neonClient;
 }
 
-// Connection health check for Neon
+// Fast Neon connection - no health check for performance
 export async function ensureNeonConnection() {
-  try {
-    const client = await getNeonClient();
-    // Quick health check
-    await client`SELECT 1 as health_check`;
-    return client;
-  } catch (error) {
-    logger.warn('Neon connection health check failed, recreating...', error);
-    // Reset client and retry once
-    globalThis.__neonClient = undefined;
-    return getNeonClient();
-  }
+  return getNeonClient(); // Trust cached connection, handle errors at query time
 }
 
 // ---- In-memory fallback (used only when DATABASE_URL is missing) ----
@@ -258,10 +245,18 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
     redisResult = await redisQuery<T>(strings, ...values);
   } catch (error) {
     logger.error('Redis write failed:', error);
+    // Reset Redis connection on error
+    globalThis.__redis = undefined;
     // If Redis fails, fall back to Neon only
     if (useNeon) {
-      const neonClient = await ensureNeonConnection();
-      return neonClient<T>(strings, ...values);
+      try {
+        const neonClient = await ensureNeonConnection();
+        return neonClient<T>(strings, ...values);
+      } catch (neonError) {
+        logger.error('Neon fallback also failed:', neonError);
+        globalThis.__neonClient = undefined;
+        throw neonError;
+      }
     }
     throw error;
   }
@@ -490,6 +485,8 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
       return await redisQuery<T>(strings, ...values);
     } catch (error) {
       logger.error('Redis query failed, falling back to Neon:', error);
+      // Reset Redis connection on error for next request
+      globalThis.__redis = undefined;
       // Fall back to Neon if Redis fails
       if (useNeon) {
         const neonClient = await ensureNeonConnection();
@@ -501,9 +498,16 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
 
   // Use Neon if Redis is not available
   if (useNeon) {
-    const neonClient = await ensureNeonConnection();
-    // @ts-ignore neon template tag signature matches
-    return neonClient<T>(strings, ...values);
+    try {
+      const neonClient = await ensureNeonConnection();
+      // @ts-ignore neon template tag signature matches
+      return neonClient<T>(strings, ...values);
+    } catch (error) {
+      logger.error('Neon query failed, resetting connection:', error);
+      // Reset Neon client on error for next request
+      globalThis.__neonClient = undefined;
+      throw error;
+    }
   }
 
   // Final fallback to in-memory
