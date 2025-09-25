@@ -1,5 +1,6 @@
-import useSWR, { useSWRConfig } from 'swr';
+import useSWR, { useSWRConfig, preload } from 'swr';
 import useSWRMutation from 'swr/mutation';
+import { fetcher } from '../lib/swr-config';
 
 // Types
 interface User {
@@ -97,24 +98,68 @@ export function useCreateEntry() {
     '/api/entries/today',
     postFetcher,
     {
-      // Optimistic update
+      // Optimistic update with entry addition
       optimisticData: (currentData) => {
-        // Get today's date in JST
-        const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-        const todayISO = today.toISOString().slice(0, 10);
-
         return {
           status: 'created',
         };
       },
       populateCache: (result, currentData) => {
-        // Update the cache with the actual result
         return result;
       },
-      revalidate: false, // Don't revalidate immediately, trust the optimistic update
-      onSuccess: () => {
-        // Invalidate all entries queries to refresh data
-        mutate(key => typeof key === 'string' && key.startsWith('/api/entries'));
+      revalidate: false,
+      onSuccess: (data) => {
+        // Get today's date for targeted cache invalidation
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+        const todayISO = today.toISOString().slice(0, 10);
+        const currentMonth = todayISO.slice(0, 7);
+
+        // Invalidate all related cache keys
+        mutate(
+          key => {
+            if (typeof key !== 'string') return false;
+
+            return (
+              // All entries queries
+              key.startsWith('/api/entries') ||
+              // Month-specific queries that might include today
+              (key.includes('since=') && key.includes('until=') &&
+               key.includes(currentMonth)) ||
+              // Any query that could show today's data
+              key.includes(todayISO) ||
+              // General entries without parameters (includes all data)
+              key === '/api/entries'
+            );
+          },
+          undefined,
+          { revalidate: true }
+        );
+
+        // Also optimistically update existing entries data
+        mutate('/api/entries', (currentData: EntriesResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          // Check if today's entry already exists
+          const hasToday = currentData.entries.some(
+            entry => entry.entry_date.slice(0, 10) === todayISO
+          );
+
+          if (!hasToday && data?.status === 'created') {
+            // Add optimistic entry
+            const newEntry = {
+              id: `temp-${Date.now()}`,
+              user_id: 'current-user',
+              entry_date: todayISO,
+              created_at: new Date().toISOString()
+            };
+
+            return {
+              entries: [...currentData.entries, newEntry]
+            };
+          }
+
+          return currentData;
+        }, { revalidate: false });
       },
     }
   );
@@ -155,5 +200,34 @@ export function useUpdateProfile() {
     updateProfile: trigger,
     isUpdating: isMutating,
     error,
+  };
+}
+
+// Prefetch utilities for better navigation performance
+export function prefetchCalendarData() {
+  // Prefetch current month's entries
+  const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const currentMonth = today.toISOString().slice(0, 7);
+  const start = `${currentMonth}-01`;
+  const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const end = `${currentMonth}-${String(endDate).padStart(2, '0')}`;
+
+  // Preload current month data
+  preload(`/api/entries?since=${start}&until=${end}`, fetcher);
+
+  // Preload all entries (for general queries)
+  preload('/api/entries', fetcher);
+}
+
+export function prefetchListData() {
+  // Prefetch all entries for list view
+  preload('/api/entries', fetcher);
+}
+
+// Hook for intelligent prefetching based on user navigation patterns
+export function usePrefetch() {
+  return {
+    prefetchCalendar: prefetchCalendarData,
+    prefetchList: prefetchListData,
   };
 }
