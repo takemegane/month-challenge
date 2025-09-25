@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "../../../../../../lib/db";
 import { requireAdmin } from "../../../../../../lib/admin-auth";
+import { logger } from "../../../../../../lib/logger";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin(req);
@@ -43,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       message: is_admin ? 'Admin privileges granted' : 'Admin privileges revoked'
     });
   } catch (error) {
-    console.error('Error updating user privileges:', error);
+    logger.error('Error updating user privileges:', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }

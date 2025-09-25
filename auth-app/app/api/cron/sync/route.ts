@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRedisClient } from "../../../../lib/redis";
 import { neon } from "@neondatabase/serverless";
+import { logger } from "../../../../lib/logger";
 
 const DATABASE_URL = process.env.DATABASE_URL_AUTH;
 const CRON_SECRET = process.env.CRON_SECRET || 'dev-cron-secret';
@@ -13,12 +14,12 @@ export async function GET(req: Request) {
   }
 
   if (!DATABASE_URL) {
-    console.error('DATABASE_URL not configured for cron sync');
+    logger.error('DATABASE_URL not configured for cron sync');
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
   try {
-    console.log(`[${new Date().toISOString()}] Starting scheduled Redis → Neon sync...`);
+    logger.info(`Starting scheduled Redis → Neon sync...`);
     const redis = await getRedisClient();
     const sql = neon(DATABASE_URL);
 
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
         `;
         syncStats.users.synced++;
       } catch (error) {
-        console.error(`Error syncing user ${key}:`, error);
+        logger.error(`Error syncing user ${key}:`, error);
         syncStats.users.errors++;
       }
     }
@@ -64,12 +65,12 @@ export async function GET(req: Request) {
         `;
         syncStats.entries.synced++;
       } catch (error) {
-        console.error(`Error syncing entry ${key}:`, error);
+        logger.error(`Error syncing entry ${key}:`, error);
         syncStats.entries.errors++;
       }
     }
 
-    console.log(`[${new Date().toISOString()}] Scheduled sync completed:`, syncStats);
+    logger.info(`Scheduled sync completed:`, syncStats);
 
     return NextResponse.json({
       status: 'success',
@@ -79,7 +80,7 @@ export async function GET(req: Request) {
     });
 
   } catch (error) {
-    console.error('Scheduled sync failed:', error);
+    logger.error('Scheduled sync failed:', error);
     return NextResponse.json({
       error: 'Sync failed',
       details: error instanceof Error ? error.message : 'Unknown error',

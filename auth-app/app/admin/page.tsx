@@ -69,7 +69,6 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/users", { cache: "no-store", credentials: 'include' });
       if (res.ok) {
         const json = await res.json();
-        console.log("Loaded users:", json.users);
         setUsers(json.users || []);
         setUserListError(null);
         if (profileEditId) {
@@ -81,7 +80,6 @@ export default function AdminPage() {
           }
         }
       } else {
-        console.error("Failed to load users, status:", res.status);
         if (res.status === 401 || res.status === 403) {
           setUserListError("ユーザー一覧を取得できませんでした。管理者権限が付与された直後の場合は、一度サインインし直してください。");
         } else {
@@ -90,7 +88,6 @@ export default function AdminPage() {
         setUsers([]);
       }
     } catch (error) {
-      console.error("Failed to load users:", error);
       setUserListError("ユーザー一覧の取得中にエラーが発生しました");
     }
   }
@@ -214,7 +211,6 @@ export default function AdminPage() {
 
   async function toggleAdminPrivilege(userId: string, currentIsAdmin: boolean) {
     setAdminMsg(null);
-    console.log("Toggling admin privilege for user:", userId, "current admin:", currentIsAdmin);
 
     try {
       const res = await fetch(`/api/admin/users/${userId}/privilege`, {
@@ -224,18 +220,14 @@ export default function AdminPage() {
         credentials: 'include'
       });
       const j = await res.json();
-      console.log("Privilege toggle response:", j);
 
       if (res.ok) {
         setAdminMsg(currentIsAdmin ? '管理者権限を剥奪しました' : '管理者権限を付与しました');
-        console.log("Reloading users after privilege change...");
         loadUsers(); // Reload user list
       } else {
-        console.error("Privilege toggle failed:", j);
         setAdminMsg(j.error || '権限変更に失敗しました');
       }
     } catch (error) {
-      console.error("Network error during privilege toggle:", error);
       setAdminMsg('ネットワークエラーが発生しました');
     }
   }

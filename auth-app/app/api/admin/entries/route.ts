@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "../../../../lib/db";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { logger } from "../../../../lib/logger";
 
 export async function POST(req: Request) {
   const admin = await requireAdmin(req);
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     `;
     return NextResponse.json({ status: 'created' });
   } catch (error) {
-    console.error('Error creating entry:', error);
+    logger.error('Error creating entry:', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }
@@ -64,7 +65,7 @@ export async function DELETE(req: Request) {
     await query`delete from auth_entries where user_id = ${user_id} and entry_date = ${entry_date}`;
     return NextResponse.json({ status: 'deleted' });
   } catch (error) {
-    console.error('Error deleting entry:', error);
+    logger.error('Error deleting entry:', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }

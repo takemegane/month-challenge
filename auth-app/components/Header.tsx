@@ -40,7 +40,7 @@ export default function Header() {
       // Redirect to login page after logout
       window.location.href = "/auth/sign-in";
     } catch (error) {
-      console.error("ログアウトエラー:", error);
+      // Silently handle logout errors - redirect regardless
       // Still redirect even if logout request fails
       window.location.href = "/auth/sign-in";
     }

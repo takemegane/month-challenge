@@ -1,5 +1,6 @@
 import { hashPassword } from "./crypto";
 import { getRedisClient } from "./redis";
+import { logger } from "./logger";
 
 const DATABASE_URL = process.env.DATABASE_URL_AUTH || process.env.DATABASE_URL;
 const REDIS_URL = process.env.REDIS_URL;
@@ -211,7 +212,7 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
   try {
     redisResult = await redisQuery<T>(strings, ...values);
   } catch (error) {
-    console.error('Redis write failed:', error);
+    logger.error('Redis write failed:', error);
     // If Redis fails, fall back to Neon only
     if (useNeon) {
       const neonClient = await getNeonClient();
@@ -227,7 +228,7 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
         const neonClient = await getNeonClient();
         await neonClient<T>(strings, ...values);
       } catch (error) {
-        console.error('Neon backup write failed:', error);
+        logger.error('Neon backup write failed:', error);
         // Log for monitoring but don't fail the operation
       }
     });
@@ -443,7 +444,7 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
     try {
       return await redisQuery<T>(strings, ...values);
     } catch (error) {
-      console.error('Redis query failed, falling back to Neon:', error);
+      logger.error('Redis query failed, falling back to Neon:', error);
       // Fall back to Neon if Redis fails
       if (useNeon) {
         const neonClient = await getNeonClient();

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
 import { getRedisClient } from "../../../../lib/redis";
 import { neon } from "@neondatabase/serverless";
+import { logger } from "../../../../lib/logger";
 
 const DATABASE_URL = process.env.DATABASE_URL_AUTH;
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    console.log('Starting Redis → Neon sync...');
+    logger.info('Starting Redis → Neon sync...');
     const redis = await getRedisClient();
     const sql = neon(DATABASE_URL);
 
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     };
 
     // Sync Users
-    console.log('Syncing users...');
+    logger.info('Syncing users...');
     const userKeys = await redis.keys('user:*');
 
     for (const key of userKeys) {
@@ -46,7 +47,6 @@ export async function POST(req: Request) {
             VALUES (${userData.id}, ${userData.email}, ${userData.password_hash}, ${userData.name}, ${userData.is_admin === 'true'})
           `;
           syncStats.users.synced++;
-          console.log(`Synced user: ${userData.email}`);
         } else {
           // Update existing user
           await sql`
@@ -58,13 +58,13 @@ export async function POST(req: Request) {
           syncStats.users.synced++;
         }
       } catch (error) {
-        console.error(`Error syncing user ${key}:`, error);
+        logger.error(`Error syncing user ${key}:`, error);
         syncStats.users.errors++;
       }
     }
 
     // Sync Entries
-    console.log('Syncing entries...');
+    logger.info('Syncing entries...');
     const entryKeys = await redis.keys('entry:*');
 
     for (const key of entryKeys) {
@@ -84,17 +84,16 @@ export async function POST(req: Request) {
             VALUES (${entryData.id}, ${entryData.user_id}, ${entryData.entry_date}, ${entryData.created_at})
           `;
           syncStats.entries.synced++;
-          console.log(`Synced entry: ${entryData.user_id} → ${entryData.entry_date}`);
         } else {
           syncStats.entries.skipped++;
         }
       } catch (error) {
-        console.error(`Error syncing entry ${key}:`, error);
+        logger.error(`Error syncing entry ${key}:`, error);
         syncStats.entries.errors++;
       }
     }
 
-    console.log('Sync completed:', syncStats);
+    logger.info('Sync completed:', syncStats);
 
     return NextResponse.json({
       status: 'success',
@@ -104,7 +103,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    console.error('Sync failed:', error);
+    logger.error('Sync failed:', error);
     return NextResponse.json({
       error: 'Sync failed',
       details: error instanceof Error ? error.message : 'Unknown error'

@@ -1,5 +1,6 @@
 import { hashPassword } from "./crypto";
 import { query } from "./db";
+import { logger } from "./logger";
 
 const seededEmails = new Set<string>();
 
@@ -30,12 +31,12 @@ export async function ensureAdminSeeded() {
         insert into auth_users (email, password_hash, name, is_admin)
         values (${email}, ${passwordHash}, ${name}, true)
       `;
-      console.log(`Seeded admin user ${email}`);
+      logger.info(`Seeded admin user ${email}`);
     } else if (!existing[0].is_admin) {
       await query`
         update auth_users set is_admin = true where id = ${existing[0].id}
       `;
-      console.log(`Updated existing user ${email} to admin`);
+      logger.info(`Updated existing user ${email} to admin`);
     }
 
     seededEmails.add(email);

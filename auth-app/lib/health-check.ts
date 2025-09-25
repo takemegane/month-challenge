@@ -1,5 +1,6 @@
 import { getRedisClient } from "./redis";
 import { neon } from "@neondatabase/serverless";
+import { logger } from "./logger";
 
 interface HealthStatus {
   redis: { healthy: boolean; error?: string };
@@ -31,7 +32,7 @@ export async function checkDatabaseHealth(): Promise<HealthStatus> {
     status.redis.healthy = testResult === 'PONG';
   } catch (error) {
     status.redis.error = error instanceof Error ? error.message : 'Unknown Redis error';
-    console.error('Redis health check failed:', error);
+    logger.error('Redis health check failed:', error);
   }
 
   // Check Neon health
@@ -44,7 +45,7 @@ export async function checkDatabaseHealth(): Promise<HealthStatus> {
     }
   } catch (error) {
     status.neon.error = error instanceof Error ? error.message : 'Unknown Neon error';
-    console.error('Neon health check failed:', error);
+    logger.error('Neon health check failed:', error);
   }
 
   // Cache the result
@@ -54,10 +55,10 @@ export async function checkDatabaseHealth(): Promise<HealthStatus> {
   // Log status changes
   if (lastHealthCheck) {
     if (status.redis.healthy !== lastHealthCheck.redis.healthy) {
-      console.log(`Redis health changed: ${lastHealthCheck.redis.healthy} → ${status.redis.healthy}`);
+      logger.info(`Redis health changed: ${lastHealthCheck.redis.healthy} → ${status.redis.healthy}`);
     }
     if (status.neon.healthy !== lastHealthCheck.neon.healthy) {
-      console.log(`Neon health changed: ${lastHealthCheck.neon.healthy} → ${status.neon.healthy}`);
+      logger.info(`Neon health changed: ${lastHealthCheck.neon.healthy} → ${status.neon.healthy}`);
     }
   }
 
@@ -74,10 +75,10 @@ export async function getRecommendedStorage(): Promise<'redis' | 'neon' | 'mock'
   if (health.redis.healthy) {
     return 'redis';
   } else if (health.neon.healthy) {
-    console.warn('Redis unhealthy, falling back to Neon');
+    logger.warn('Redis unhealthy, falling back to Neon');
     return 'neon';
   } else {
-    console.error('Both Redis and Neon unhealthy, using mock storage');
+    logger.error('Both Redis and Neon unhealthy, using mock storage');
     return 'mock';
   }
 }

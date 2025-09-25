@@ -30,9 +30,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   const token = req.cookies.get("auth-token")?.value;
-  console.log(`Middleware: ${path} - Token present: ${!!token}`);
   if (!token) {
-    console.log(`Redirecting ${path} to login - no token`);
     return NextResponse.redirect(new URL("/auth/sign-in", req.url));
   }
   // 軽量チェック（期限切れなどはAPI側で厳密検証）
