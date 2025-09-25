@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, useEffect } from "react";
 import { formatInTimeZone } from "date-fns-tz";
+import { useRouter } from "next/navigation";
 import { getJstTodayDate } from "../lib/date";
 import { CalendarGrid } from "./CalendarGrid";
 import { useEntries } from "../hooks/use-api";
@@ -16,6 +17,7 @@ function addMonths(base: string, diff: number) {
 }
 
 export function CalendarView({ initialMonth }: { initialMonth?: string }) {
+  const router = useRouter();
   const today = getJstTodayDate();
   const [month, setMonth] = useState<string>(initialMonth ? firstOfMonth(initialMonth) : firstOfMonth(today));
   const monthLabel = useMemo(() => formatInTimeZone(new Date(month), "Asia/Tokyo", "yyyy年M月"), [month]);
@@ -60,7 +62,10 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
         <button
           className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="前の月"
-          onClick={() => setMonth((m) => addMonths(m, -1))}
+          onClick={() => {
+            const prevMonth = addMonths(month, -1).slice(0, 7);
+            router.push(`/calendar?month=${prevMonth}`);
+          }}
           disabled={!canPrev}
         >
           ← 前の月
@@ -72,7 +77,10 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
         <button
           className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="次の月"
-          onClick={() => setMonth((m) => addMonths(m, +1))}
+          onClick={() => {
+            const nextMonth = addMonths(month, +1).slice(0, 7);
+            router.push(`/calendar?month=${nextMonth}`);
+          }}
           disabled={!canNext}
         >
           次の月 →
@@ -86,7 +94,10 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
           <button
             className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 text-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="前の月"
-            onClick={() => setMonth((m) => addMonths(m, -1))}
+            onClick={() => {
+              const prevMonth = addMonths(month, -1).slice(0, 7);
+              router.push(`/calendar?month=${prevMonth}`);
+            }}
             disabled={!canPrev}
           >
             ←
@@ -95,7 +106,10 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
           <button
             className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 text-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="次の月"
-            onClick={() => setMonth((m) => addMonths(m, +1))}
+            onClick={() => {
+              const nextMonth = addMonths(month, +1).slice(0, 7);
+              router.push(`/calendar?month=${nextMonth}`);
+            }}
             disabled={!canNext}
           >
             →
