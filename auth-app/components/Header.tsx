@@ -1,35 +1,11 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  is_admin?: boolean;
-}
+import { useUser } from "../hooks/use-api";
 
 export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isAuth) {
-      fetch("/api/auth/me", { credentials: "include" })
-        .then(res => res.json())
-        .then(data => {
-          if (data.user) {
-            setUser(data.user);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
-  }, [isAuth]);
+  const { user, isLoading } = useUser();
 
   const handleLogout = async () => {
     try {

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { getJstTodayDate, startOfMonthJst, endOfMonthJst, toISODate } from "../lib/date";
+import { useEntries, useCreateEntry } from "../hooks/use-api";
 
 type Props = {
   month?: string; // YYYY-MM-01 (JST)
@@ -11,31 +12,26 @@ type Props = {
 
 export function CalendarGrid({ month, today = getJstTodayDate(), marked, onChange }: Props) {
   const [todayStatus, setTodayStatus] = useState<"idle" | "loading" | "created" | "exists">("idle");
+
+  // Use SWR to check today's entries
+  const { entries } = useEntries();
+  const { createEntry, isCreating } = useCreateEntry();
+
   useEffect(() => {
-    // Check if already recorded today
-    fetch("/api/entries", { cache: "no-store", credentials: 'include' })
-      .then((r) => r.json())
-      .then((data) => {
-        const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-        const iso = jst.toISOString().slice(0, 10);
-        if (data.entries?.some((e: any) => (e.entry_date as string).slice(0, 10) === iso)) setTodayStatus("exists");
-      })
-      .catch(() => {});
-  }, []);
+    // Check if already recorded today using SWR data
+    const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    const iso = jst.toISOString().slice(0, 10);
+    const hasToday = entries.some((e: any) => (e.entry_date as string).slice(0, 10) === iso);
+    setTodayStatus(hasToday ? "exists" : "idle");
+  }, [entries]);
   async function recordToday() {
-    if (todayStatus === "loading" || todayStatus === "created" || todayStatus === "exists") return;
+    if (todayStatus === "loading" || todayStatus === "created" || todayStatus === "exists" || isCreating) return;
+
     try {
       setTodayStatus("loading");
-      const res = await fetch("/api/entries/today", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "failed");
-      setTodayStatus(json.status);
-      try { onChange && onChange(); } catch {}
+      const result = await createEntry();
+      setTodayStatus(result?.status || "created");
+      // SWR will automatically revalidate and trigger onChange if needed
     } catch {
       setTodayStatus("idle");
     }

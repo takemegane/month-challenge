@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import { formatInTimeZone } from "date-fns-tz";
 import { getJstTodayDate } from "../lib/date";
 import { CalendarGrid } from "./CalendarGrid";
+import { useEntries } from "../hooks/use-api";
 
 function firstOfMonth(dateStr: string) {
   return dateStr.slice(0, 7) + "-01";
@@ -22,29 +23,29 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
   const sixMonthsAgo = addMonths(thisMonth, -6);
   const canNext = month < thisMonth; // disable moving to future months
   const canPrev = month > sixMonthsAgo; // disable moving more than 6 months back
-  const [count, setCount] = useState<number>(0);
-  const [marked, setMarked] = useState<Set<string>>(new Set());
+
   const headerTitle = useMemo(() => {
     if (month === thisMonth) return "今月の件数";
     const m = new Date(month).getMonth() + 1;
     return `${m}月の件数`;
   }, [month, thisMonth]);
 
-  async function fetchMonthData(m: string) {
-    const d = new Date(m);
+  // Build date range for SWR query
+  const { since, until } = useMemo(() => {
+    const d = new Date(month);
     const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
     const endDate = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
-    const params = new URLSearchParams({ since: start, until: end });
-    const res = await fetch(`/api/entries?${params}`, { cache: "no-store", credentials: 'include' });
-    if (!res.ok) { setCount(0); setMarked(new Set()); return; }
-    const json = await res.json();
-    const entries = Array.isArray(json.entries) ? json.entries : [];
-    setCount(entries.length);
-    setMarked(new Set(entries.map((e: any) => String(e.entry_date).slice(0,10))));
-  }
+    return { since: start, until: end };
+  }, [month]);
 
-  useMemo(() => { fetchMonthData(month); return undefined; }, [month]);
+  // Use SWR for data fetching with caching
+  const { entries, count } = useEntries(undefined, since, until);
+
+  // Create marked set from entries
+  const marked = useMemo(() => {
+    return new Set(entries.map((e: any) => String(e.entry_date).slice(0,10)));
+  }, [entries]);
 
   // Update month when initialMonth changes (e.g., when navigating from list)
   useEffect(() => {
@@ -105,7 +106,10 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
         month={month}
         today={today}
         marked={marked}
-        onChange={() => { fetchMonthData(month); }}
+        onChange={() => {
+          // SWR will automatically revalidate when entries change
+          // No manual fetch needed
+        }}
       />
     </div>
   );
