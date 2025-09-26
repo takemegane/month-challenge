@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { existsSync } from "fs";
-import { join } from "path";
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if uploaded icon exists
-    const uploadedIconPath = join(process.cwd(), "public", "icons", "icon-192.png");
+    // Check if we have uploaded icons in memory
+    const uploadedIcons = (global as any).uploadedIcons;
 
-    if (existsSync(uploadedIconPath)) {
-      // Return local uploaded icon
+    if (uploadedIcons && uploadedIcons['icon-192']) {
+      // Return uploaded icon API endpoint
       return NextResponse.json({
-        iconUrl: "/icons/icon-192.png",
+        iconUrl: "/api/icon/pwa-icon-192",
         type: "uploaded"
       });
     } else {

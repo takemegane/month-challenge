@@ -220,9 +220,13 @@ export default function AdminPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setIconUploadMsg("PWAアイコンを更新しました。アプリをリロードしてください。");
+        setIconUploadMsg("アイコンを更新しました。ページをリロードしてください。");
         // Reset form
         (e.target as HTMLFormElement).reset();
+        // Refresh icon after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         if (data.error === "unauthorized") {
           setIconUploadMsg("管理者権限が必要です");
