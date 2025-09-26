@@ -71,11 +71,23 @@ export async function PUT(req: Request) {
   const nextEmail = body.email !== undefined ? body.email : current.email.toLowerCase();
   const nextPasswordHash = body.new_password ? hashPassword(body.new_password) : current.password_hash;
 
-  await query`
+  console.log('Profile update debug:', {
+    userId,
+    bodyName: body.name,
+    bodyEmail: body.email,
+    currentName: current.name,
+    currentEmail: current.email,
+    nextName,
+    nextEmail
+  });
+
+  const updateResult = await query`
     update auth_users
     set name = ${nextName}, email = ${nextEmail}, password_hash = ${nextPasswordHash}
     where id = ${userId}
   `;
+
+  console.log('Update result:', updateResult);
 
   const newToken = signToken(
     {
