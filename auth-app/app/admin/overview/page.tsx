@@ -53,7 +53,7 @@ export default function AdminOverviewPage() {
   const data = overview;
 
 
-  const days = useMemo(() => data?.daily.map((d) => d.date) ?? [], [data]);
+  const days = useMemo(() => data?.daily.map((d: { date: string; count: number }) => d.date) ?? [], [data]);
 
   const sortedUsers = useMemo(() => {
     return [...(data?.users || [])].sort((a, b) => a.name.localeCompare(b.name));
