@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import sharp from "sharp";
-import { verifyAuth } from "../../../../lib/auth";
+import { requireAdmin } from "../../../../lib/admin-auth";
 
 const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 
 export async function POST(request: NextRequest) {
-  const authResult = await verifyAuth(request);
-  if (!authResult.success || !authResult.user?.is_admin) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const admin = await requireAdmin(request);
+  if (!admin.ok) {
+    return NextResponse.json(admin.body, { status: admin.status });
   }
 
   try {
