@@ -287,13 +287,16 @@ export function useCheckOperation() {
         throw error;
       }
 
-      return res.json();
-    },
-    {
-      onSuccess: (data, key, config) => {
-        const { month } = config.arg;
+      return { ...res.json(), month: arg.month };
+    }
+  );
+
+  return {
+    performCheck: async (arg: { action: 'add' | 'remove'; user_id: string; entry_date: string; month: string }) => {
+      try {
+        const result = await trigger(arg);
         // Invalidate overview data for the specific month
-        mutate(`/api/admin/overview?month=${month}`, undefined, { revalidate: true });
+        mutate(`/api/admin/overview?month=${arg.month}`, undefined, { revalidate: true });
 
         // Also invalidate entries data that might be cached
         mutate(
@@ -301,12 +304,12 @@ export function useCheckOperation() {
           undefined,
           { revalidate: true }
         );
-      },
-    }
-  );
 
-  return {
-    performCheck: trigger,
+        return result;
+      } catch (error) {
+        throw error;
+      }
+    },
     isUpdating: isMutating,
     error
   };

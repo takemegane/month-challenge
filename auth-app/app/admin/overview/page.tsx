@@ -314,7 +314,7 @@ export default function AdminOverviewPage() {
                     <tr>
                       <th className="sticky left-0 z-20 bg-orange-50 px-3 py-2 text-left font-medium text-orange-900/80 border-r border-orange-200 min-w-[120px]">ユーザー</th>
                       <th className="px-3 py-2 text-right font-medium text-orange-900/80 border-r border-orange-200 min-w-[60px]">件数</th>
-                      {days.map((day) => (
+                      {days.map((day: string) => (
                         <th key={day} className="px-2 py-2 font-medium text-orange-900/70 min-w-[40px]">
                           {Number(day.slice(-2))}
                         </th>
@@ -332,7 +332,7 @@ export default function AdminOverviewPage() {
                           <td className="px-3 py-2 text-right font-semibold text-orange-900/80 border-r border-orange-200 min-w-[60px]">
                             {user.total}
                           </td>
-                          {days.map((day) => (
+                          {days.map((day: string) => (
                             <td key={`${user.id}-${day}`} className="px-2 py-1 min-w-[40px]">
                               <div
                                 className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
