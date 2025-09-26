@@ -42,7 +42,7 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
   }, [month]);
 
   // Use SWR for data fetching with caching
-  const { entries, count } = useEntries(undefined, since, until);
+  const { entries, count, isLoading } = useEntries(undefined, since, until);
 
   // Create marked set from entries
   const marked = useMemo(() => {
@@ -78,7 +78,7 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
         </button>
         <div className="flex flex-col items-center">
           <div className="text-4xl font-bold text-orange-900/90 whitespace-nowrap">
-            {count === 0 && entries.length === 0 ? (
+            {isLoading ? (
               <div className="bg-orange-200 text-transparent bg-clip-text animate-pulse">
                 {headerTitle}: ● 件
               </div>
@@ -104,7 +104,7 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
       {/* スマホ版: コンパクトレイアウト */}
       <div className="sm:hidden space-y-2">
         <div className="text-2xl font-bold text-orange-900/90 text-center">
-          {count === 0 && entries.length === 0 ? (
+          {isLoading ? (
             <div className="bg-orange-200 text-transparent bg-clip-text animate-pulse">
               {headerTitle}: ● 件
             </div>
