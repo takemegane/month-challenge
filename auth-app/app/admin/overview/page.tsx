@@ -284,18 +284,16 @@ export default function AdminOverviewPage() {
                 <button
                   type="button"
                   onClick={() => handleCheck('add')}
-                  disabled={isUpdating}
-                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
                 >
-                  {isUpdating ? '更新中...' : 'チェックを付ける'}
+                  チェックを付ける
                 </button>
                 <button
                   type="button"
                   onClick={() => handleCheck('remove')}
-                  disabled={isUpdating}
-                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
                 >
-                  {isUpdating ? '更新中...' : 'チェックを外す'}
+                  チェックを外す
                 </button>
               </div>
               {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}

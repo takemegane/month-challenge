@@ -266,52 +266,76 @@ export function useOverview(month?: string) {
   };
 }
 
-// Check operation hook with optimistic updates
+// Check operation hook with optimistic updates (no reloads)
 export function useCheckOperation() {
   const { mutate } = useSWRConfig();
-
-  const { trigger, isMutating, error } = useSWRMutation(
-    '/api/admin/entries',
-    async (url: string, { arg }: { arg: { action: 'add' | 'remove'; user_id: string; entry_date: string; month: string } }) => {
-      const res = await fetch(url, {
-        method: arg.action === 'add' ? 'POST' : 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: arg.user_id, entry_date: arg.entry_date }),
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        const error = new Error('HTTP Error');
-        (error as any).status = res.status;
-        (error as any).info = await res.json().catch(() => ({}));
-        throw error;
-      }
-
-      return { ...res.json(), month: arg.month };
-    }
-  );
 
   return {
     performCheck: async (arg: { action: 'add' | 'remove'; user_id: string; entry_date: string; month: string }) => {
       try {
-        const result = await trigger(arg);
-        // Invalidate overview data for the specific month
-        mutate(`/api/admin/overview?month=${arg.month}`, undefined, { revalidate: true });
+        const res = await fetch('/api/admin/entries', {
+          method: arg.action === 'add' ? 'POST' : 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: arg.user_id, entry_date: arg.entry_date }),
+          credentials: 'include',
+        });
 
-        // Also invalidate entries data that might be cached
-        mutate(
-          key => typeof key === 'string' && key.startsWith('/api/entries'),
-          undefined,
-          { revalidate: true }
-        );
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw { status: res.status, info: errorData };
+        }
+
+        const result = await res.json();
+
+        // Optimistic update - update cache directly without revalidating
+        mutate(`/api/admin/overview?month=${arg.month}`, (currentData: any) => {
+          if (!currentData) return currentData;
+
+          // Create updated data based on the operation
+          const updatedData = { ...currentData };
+
+          if (updatedData.users) {
+            updatedData.users = updatedData.users.map((user: any) => {
+              if (user.id === arg.user_id) {
+                const updatedUser = { ...user };
+                if (arg.action === 'add') {
+                  // Add date if not already present
+                  if (!updatedUser.dates.includes(arg.entry_date)) {
+                    updatedUser.dates = [...updatedUser.dates, arg.entry_date];
+                    updatedUser.total = updatedUser.dates.length;
+                  }
+                } else {
+                  // Remove date if present
+                  updatedUser.dates = updatedUser.dates.filter((date: string) => date !== arg.entry_date);
+                  updatedUser.total = updatedUser.dates.length;
+                }
+                return updatedUser;
+              }
+              return user;
+            });
+
+            // Update totals
+            const totalEntries = updatedData.users.reduce((sum: number, user: any) => sum + user.total, 0);
+            const activeUsers = updatedData.users.filter((user: any) => user.total > 0).length;
+            const averagePerUser = activeUsers > 0 ? Number((totalEntries / activeUsers).toFixed(1)) : 0;
+
+            updatedData.totals = {
+              totalEntries,
+              activeUsers,
+              averagePerActiveUser: averagePerUser
+            };
+          }
+
+          return updatedData;
+        }, { revalidate: false });
 
         return result;
       } catch (error) {
         throw error;
       }
     },
-    isUpdating: isMutating,
-    error
+    isUpdating: false,
+    error: null
   };
 }
 
