@@ -58,7 +58,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   });
 
   // If the admin is editing their own profile, update their session token
-  if (admin.body.user.id === id) {
+  if (admin.user.id === id) {
     const secret = process.env.AUTH_SESSION_SECRET || "dev-secret";
     const newToken = signToken(
       {
