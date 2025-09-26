@@ -490,8 +490,6 @@ async function redisQuery<T = any>(strings: TemplateStringsArray, ...values: any
     const password_hash = String(values[2] || "");
     const id = String(values[3] || "");
 
-    console.log('Redis profile update:', { name, email, id });
-
     const currentUser = await redis.hGetAll(`user_by_id:${id}`);
     if (currentUser.id) {
       const oldEmail = currentUser.email;
@@ -511,8 +509,6 @@ async function redisQuery<T = any>(strings: TemplateStringsArray, ...values: any
       if (oldEmail && oldEmail !== email) {
         await redis.del(`user:${oldEmail}`);
       }
-
-      console.log('Redis profile updated successfully');
     }
     return [] as T[];
   }
