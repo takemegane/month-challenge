@@ -76,6 +76,36 @@ export async function POST(request: NextRequest) {
 
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
+    // Also update layout.tsx metadata to use local icons
+    const layoutPath = join(process.cwd(), "app", "layout.tsx");
+    const layoutContent = await require("fs/promises").readFile(layoutPath, "utf8");
+
+    // Replace GitHub Raw URLs with local paths in layout.tsx
+    const updatedLayoutContent = layoutContent
+      .replace(
+        /https:\/\/raw\.githubusercontent\.com\/takemegane\/month-challenge\/main\/public\/icons\/icon-72\.png\.svg/g,
+        "/icons/icon-72.png"
+      )
+      .replace(
+        /https:\/\/raw\.githubusercontent\.com\/takemegane\/month-challenge\/main\/public\/icons\/icon-96\.png\.svg/g,
+        "/icons/icon-96.png"
+      )
+      .replace(
+        /https:\/\/raw\.githubusercontent\.com\/takemegane\/month-challenge\/main\/public\/icons\/icon-128\.png\.svg/g,
+        "/icons/icon-128.png"
+      )
+      .replace(
+        /https:\/\/raw\.githubusercontent\.com\/takemegane\/month-challenge\/main\/public\/icons\/icon-152\.png\.svg/g,
+        "/icons/icon-152.png"
+      )
+      .replace(
+        /https:\/\/raw\.githubusercontent\.com\/takemegane\/month-challenge\/main\/public\/icons\/icon-192\.svg/g,
+        "/icons/icon-192.png"
+      )
+      .replace(/image\/svg\+xml/g, "image/png");
+
+    await writeFile(layoutPath, updatedLayoutContent);
+
     return NextResponse.json({
       success: true,
       message: "PWAアイコンを更新しました",

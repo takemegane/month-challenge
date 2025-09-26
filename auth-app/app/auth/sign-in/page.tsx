@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 
@@ -7,6 +7,21 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [iconUrl, setIconUrl] = useState<string>("https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg");
+
+  useEffect(() => {
+    // Load current icon
+    fetch("/api/icon/current")
+      .then(res => res.json())
+      .then(data => {
+        if (data.iconUrl) {
+          setIconUrl(data.iconUrl);
+        }
+      })
+      .catch(() => {
+        // Keep default icon on error
+      });
+  }, []);
   
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,7 +74,20 @@ export default function SignIn() {
     }}>
       <div style={{ width: '100%', maxWidth: '24rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#27272a', marginBottom: '0rem' }}>月チャレログイン</h1>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#27272a', marginBottom: '1rem' }}>月チャレ</h1>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+            <img
+              src={iconUrl}
+              alt="月チャレアイコン"
+              style={{
+                width: '96px',
+                height: '96px',
+                borderRadius: '1rem',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                border: '2px solid rgba(255, 255, 255, 0.8)'
+              }}
+            />
+          </div>
         </div>
         
         <div style={{

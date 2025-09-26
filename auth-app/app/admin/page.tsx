@@ -286,6 +286,55 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* アイコン設定 */}
+      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-lg space-y-4">
+        <h2 className="font-medium">アイコン設定</h2>
+        <p className="text-sm text-gray-600">
+          トップのアイコンを設定できます。
+          PNG、JPEG、WebP形式の画像をアップロードしてください。
+        </p>
+
+        <form onSubmit={uploadPWAIcon} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              アイコン画像（推奨: 512x512px以上の正方形画像）
+            </label>
+            <input
+              type="file"
+              name="icon"
+              accept="image/*"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              disabled={iconUploading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              ファイルサイズ: 5MB以下
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={iconUploading}
+            className={`px-4 py-2 rounded-md font-medium ${
+              iconUploading
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-orange-600 text-white hover:bg-orange-700"
+            }`}
+          >
+            {iconUploading ? "アップロード中..." : "アイコンを更新"}
+          </button>
+        </form>
+
+        {iconUploadMsg && (
+          <div className={`text-sm p-2 rounded ${
+            iconUploadMsg.includes("成功") || iconUploadMsg.includes("更新")
+              ? "text-green-700 bg-green-50"
+              : "text-red-700 bg-red-50"
+          }`}>
+            {iconUploadMsg}
+          </div>
+        )}
+      </div>
+
       {profileEditId && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -411,54 +460,6 @@ export default function AdminPage() {
         {adminMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{adminMsg}</div>}
       </div>
 
-      {/* PWAアイコン管理 */}
-      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-lg space-y-4">
-        <h2 className="font-medium">PWAアイコン設定</h2>
-        <p className="text-sm text-gray-600">
-          スマートフォンのホーム画面に表示されるアプリアイコンを設定できます。
-          PNG、JPEG、WebP形式の画像をアップロードしてください。
-        </p>
-
-        <form onSubmit={uploadPWAIcon} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              アイコン画像（推奨: 512x512px以上の正方形画像）
-            </label>
-            <input
-              type="file"
-              name="icon"
-              accept="image/*"
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-              disabled={iconUploading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              ファイルサイズ: 5MB以下
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={iconUploading}
-            className={`px-4 py-2 rounded-md font-medium ${
-              iconUploading
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-orange-600 text-white hover:bg-orange-700"
-            }`}
-          >
-            {iconUploading ? "アップロード中..." : "アイコンを更新"}
-          </button>
-        </form>
-
-        {iconUploadMsg && (
-          <div className={`text-sm p-2 rounded ${
-            iconUploadMsg.includes("成功") || iconUploadMsg.includes("更新")
-              ? "text-green-700 bg-green-50"
-              : "text-red-700 bg-red-50"
-          }`}>
-            {iconUploadMsg}
-          </div>
-        )}
-      </div>
 
       {/* ユーザー一覧 */}
       <div className="rounded-lg border border-orange-200/70 bg-white p-4">
