@@ -77,7 +77,15 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
           ← 前の月
         </button>
         <div className="flex flex-col items-center">
-          <div className="text-4xl font-bold text-orange-900/90 whitespace-nowrap">{headerTitle}: {count} 件</div>
+          <div className="text-4xl font-bold text-orange-900/90 whitespace-nowrap">
+            {count === 0 && entries.length === 0 ? (
+              <div className="bg-orange-200 text-transparent bg-clip-text animate-pulse">
+                {headerTitle}: ● 件
+              </div>
+            ) : (
+              <>{headerTitle}: {count} 件</>
+            )}
+          </div>
           <div className="mt-1 font-semibold text-orange-900/90 text-2xl">{monthLabel}</div>
         </div>
         <button
@@ -95,7 +103,15 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
 
       {/* スマホ版: コンパクトレイアウト */}
       <div className="sm:hidden space-y-2">
-        <div className="text-2xl font-bold text-orange-900/90 text-center">{headerTitle}: {count} 件</div>
+        <div className="text-2xl font-bold text-orange-900/90 text-center">
+          {count === 0 && entries.length === 0 ? (
+            <div className="bg-orange-200 text-transparent bg-clip-text animate-pulse">
+              {headerTitle}: ● 件
+            </div>
+          ) : (
+            <>{headerTitle}: {count} 件</>
+          )}
+        </div>
         <div className="flex items-center justify-center gap-2">
           <button
             className="px-3 py-2 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 text-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
