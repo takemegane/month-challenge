@@ -356,3 +356,253 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 - デプロイURL: 最新コミットが反映済み
 
 **今回の改善により、管理者の作業効率とモバイル体験が大幅に向上**
+
+---
+
+## 2025年9月26日 - プロフィール更新問題の完全解決
+
+### 🚨 発生した問題
+**症状**: アカウント設定で名前を変更しても、リロード後に元の名前に戻ってしまう現象
+
+**影響範囲**:
+- 名前の変更が保存されない
+- メールアドレス変更も同様の問題
+- パスワード変更は正常動作
+
+### 🔍 問題調査プロセス
+
+#### 1. 初期診断
+- フロントエンドSWRキャッシュ更新の問題と推定
+- `useUpdateProfile`フックの修正を実施
+- 結果: 一時的な改善のみで根本解決せず
+
+#### 2. API動作確認
+**テスト方法**: ブラウザ開発者ツールのNetworkタブ
+**結果**: `/api/auth/profile` APIは正常なレスポンスを返していた
+```json
+{
+    "user": {
+        "id": "01f8964e-d3e1-4e55-ac10-96d4f983cd9a",
+        "email": "aaa@bbb.com",
+        "name": "test１",
+        "is_admin": false
+    }
+}
+```
+
+#### 3. 根本原因の特定
+**発見**: デュアル書き込み（Redis + PostgreSQL）システムで、プロフィール更新処理が**完全に欠如**していた
+
+**問題箇所**: `/auth-app/lib/db.ts`
+- `update auth_users set is_admin` の処理は実装済み
+- **`update auth_users set name, email, password_hash` の処理が未実装**
+
+### 🛠️ 実装された修正
+
+#### 1. データベース層の修正
+**lib/db.ts**: プロフィール更新処理を追加
+
+**Mock環境用**:
+```typescript
+// Handle general profile updates (name, email, password_hash)
+if (sql.includes("update auth_users") && sql.includes("set name")) {
+  const name = String(values[0] || "");
+  const email = String(values[1] || "");
+  const password_hash = String(values[2] || "");
+  const id = String(values[3] || "");
+
+  const users = await getUsers();
+  const user = users.find((u) => u.id === id);
+  if (user) {
+    user.name = name;
+    user.email = email;
+    user.password_hash = password_hash;
+  }
+  return [] as T[];
+}
+```
+
+**Redis環境用**:
+```typescript
+// Handle general profile updates (name, email, password_hash)
+if (sql.includes("update auth_users") && sql.includes("set name")) {
+  const name = String(values[0] || "");
+  const email = String(values[1] || "");
+  const password_hash = String(values[2] || "");
+  const id = String(values[3] || "");
+
+  const currentUser = await redis.hGetAll(`user_by_id:${id}`);
+  if (currentUser.id) {
+    const oldEmail = currentUser.email;
+    const updatedUser = {
+      id,
+      name,
+      email,
+      password_hash,
+      is_admin: currentUser.is_admin
+    };
+
+    // Update both Redis keys
+    await redis.hSet(`user:${email}`, updatedUser);
+    await redis.hSet(`user_by_id:${id}`, updatedUser);
+
+    // If email changed, remove old email key
+    if (oldEmail && oldEmail !== email) {
+      await redis.del(`user:${oldEmail}`);
+    }
+  }
+  return [] as T[];
+}
+```
+
+#### 2. API検証ロジックの修正
+**app/api/auth/profile/route.ts**: フィールド検証の改善
+
+**修正前**:
+```typescript
+if (!body.name && !body.email && !body.new_password) {
+  return NextResponse.json({ error: "nothing_to_update" }, { status: 400 });
+}
+
+const nextName = body.name ? body.name : current.name;
+```
+
+**修正後**:
+```typescript
+if (body.name === undefined && body.email === undefined && !body.new_password) {
+  return NextResponse.json({ error: "nothing_to_update" }, { status: 400 });
+}
+
+const nextName = body.name !== undefined ? body.name : current.name;
+```
+
+#### 3. フロントエンドキャッシュ強化
+**hooks/use-api.ts**: SWRキャッシュ更新の強化
+
+```typescript
+onSuccess: (data) => {
+  if (data?.user) {
+    // 直接キャッシュ更新
+    mutate('/api/auth/me', { user: data.user }, { revalidate: false });
+
+    // 全認証関連キャッシュを強制無効化
+    mutate(
+      (key) => typeof key === 'string' && key.includes('/api/auth'),
+      undefined,
+      { revalidate: true }
+    );
+  } else {
+    mutate('/api/auth/me');
+  }
+}
+```
+
+### 📊 技術的詳細
+
+#### デュアル書き込みシステムの構造
+```typescript
+const useRedis = !!REDIS_URL;
+const useNeon = !!DATABASE_URL;
+const useDualWrite = useRedis && useNeon;
+const useMock = !DATABASE_URL && !REDIS_URL;
+```
+
+**動作フロー**:
+1. **プライマリ**: Redis書き込み
+2. **バックアップ**: PostgreSQL非同期書き込み
+3. **フォールバック**: Redis障害時はPostgreSQLのみ
+
+#### デバッグプロセス
+1. **Vercel Function Logs**で実際のAPI実行を監視
+2. **ブラウザNetworkタブ**でAPI呼び出しを確認
+3. **Console.log**で段階的なデバッグ
+4. **データベース更新結果**の直接確認
+
+### ✅ 解決結果
+
+#### 動作確認済み機能
+- ✅ **名前変更**: リロード後も正しく保持される
+- ✅ **メールアドレス変更**: 完全動作（重複チェック含む）
+- ✅ **パスワード変更**: 現在のパスワード認証付きで動作
+- ✅ **管理者による他ユーザープロフィール編集**: 完全動作
+- ✅ **UI即座更新**: SWRキャッシュ無効化で即時反映
+
+#### パフォーマンス
+- **API応答時間**: 変更なし
+- **UI応答性**: キャッシュ最適化により向上
+- **データ整合性**: デュアル書き込みで高可用性
+
+### 🚀 デプロイ履歴
+
+**主要コミット**:
+- `27d89f1`: 初期SWRキャッシュ修正
+- `d69d9f3`: API検証ロジック修正
+- `6600f8e`: メールアドレス検証統一
+- `6ed9e4d`: デュアル書き込み層修正（根本解決）
+- `d2ad5ae`: デバッグログクリーンアップ
+
+**デプロイ先**:
+- **本番環境**: Vercel自動デプロイ
+- **データベース**: Neon PostgreSQL + Redis Cloud
+
+### 📋 学習ポイント
+
+#### 1. 複雑なシステムでのデバッグ手法
+- **段階的切り分け**: フロントエンド → API → データベース
+- **実環境でのテスト**: 開発環境では再現しない問題
+- **詳細ログの重要性**: console.logによる動作確認
+
+#### 2. デュアル書き込みシステムの注意点
+- **処理漏れの発生リスク**: 片方のストレージのみ実装される
+- **一貫性の確保**: 両方のストレージで同じ処理が必要
+- **エラーハンドリング**: フォールバック機能の重要性
+
+#### 3. Next.js + SWRでの状態管理
+- **キャッシュ無効化のタイミング**: onSuccess時の適切な処理
+- **楽観的更新**: ユーザー体験の向上
+- **revalidateオプション**: false/trueの使い分け
+
+### 🔧 今後の改善提案
+
+#### 1. 監視・ログ強化
+```typescript
+// 本番環境用の構造化ログ
+logger.info('Profile updated', {
+  userId,
+  fields: Object.keys(updates),
+  timestamp: new Date().toISOString()
+});
+```
+
+#### 2. テスト追加
+```typescript
+// プロフィール更新の統合テスト
+describe('Profile Update', () => {
+  it('should persist name changes after reload', async () => {
+    // テストロジック
+  });
+});
+```
+
+#### 3. エラー監視
+- Sentry統合でプロダクションエラートラッキング
+- デュアル書き込み失敗の監視とアラート
+
+### 💡 セッション終了状態
+
+**✅ 完全解決済み**:
+- プロフィール更新機能の完全動作
+- リロード後のデータ永続化
+- 全フィールド（名前・メール・パスワード）対応
+
+**🔒 セキュリティ**:
+- 現在のパスワード認証必須（メール・パスワード変更時）
+- JWT セッション管理
+- 適切な入力検証
+
+**⚡ パフォーマンス**:
+- SWRキャッシュ最適化
+- デュアル書き込みでの高可用性
+- UI即座更新
+
+**最終確認**: 全てのプロフィール更新機能が正常動作中（admin@example.com / password123でテスト済み）
