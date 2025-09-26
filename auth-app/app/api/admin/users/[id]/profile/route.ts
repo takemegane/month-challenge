@@ -23,7 +23,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "bad_request", issues: parsed.error.issues }, { status: 400 });
   }
   const body = parsed.data;
-  if (!body.name && !body.email && !body.password) {
+  if (body.name === undefined && body.email === undefined && !body.password) {
     return NextResponse.json({ error: "nothing_to_update" }, { status: 400 });
   }
 
@@ -34,7 +34,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!target) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   let nextEmail = target.email;
-  if (body.email && body.email !== target.email.toLowerCase()) {
+  if (body.email !== undefined && body.email !== target.email.toLowerCase()) {
     const existing = await query<{ id: string }>`
       select id from auth_users where lower(email) = lower(${body.email}) and id <> ${id}
     `;
@@ -44,7 +44,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     nextEmail = body.email;
   }
 
-  const nextName = body.name ? body.name : target.name;
+  const nextName = body.name !== undefined ? body.name : target.name;
   const nextPasswordHash = body.password ? hashPassword(body.password) : target.password_hash;
 
   await query`

@@ -35,7 +35,7 @@ export async function PUT(req: Request) {
   }
 
   const body = parsed.data;
-  if (!body.name && !body.email && !body.new_password) {
+  if (body.name === undefined && body.email === undefined && !body.new_password) {
     return NextResponse.json({ error: "nothing_to_update" }, { status: 400 });
   }
 
@@ -67,8 +67,8 @@ export async function PUT(req: Request) {
     }
   }
 
-  const nextName = body.name ? body.name : current.name;
-  const nextEmail = body.email ? body.email : current.email.toLowerCase();
+  const nextName = body.name !== undefined ? body.name : current.name;
+  const nextEmail = body.email !== undefined ? body.email : current.email.toLowerCase();
   const nextPasswordHash = body.new_password ? hashPassword(body.new_password) : current.password_hash;
 
   await query`
