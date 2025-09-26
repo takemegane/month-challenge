@@ -225,7 +225,7 @@ export default function AdminOverviewPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-orange-100">
-                  {data.users.slice(0, 20).map((user) => {
+                  {data.users.slice(0, 20).map((user: OverviewUser) => {
                     const totalDays = days.length || 1;
                     const rate = Math.round((user.total / totalDays) * 100);
                     return (
@@ -322,7 +322,7 @@ export default function AdminOverviewPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedUsers.map((user) => {
+                    {sortedUsers.map((user: OverviewUser) => {
                       const marked = new Set(user.dates);
                       return (
                         <tr key={`detail-${user.id}`} className="hover:bg-orange-50/50">
