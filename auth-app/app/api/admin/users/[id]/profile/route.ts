@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "../../../../../../lib/admin-auth";
 import { query } from "../../../../../../lib/db";
-import { hashPassword } from "../../../../../../lib/crypto";
+import { hashPassword, signToken } from "../../../../../../lib/crypto";
 
 const BodySchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
@@ -53,7 +53,32 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     where id = ${id}
   `;
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     user: { id: target.id, name: nextName, email: nextEmail, is_admin: target.is_admin },
   });
+
+  // If the admin is editing their own profile, update their session token
+  if (admin.body.user.id === id) {
+    const secret = process.env.AUTH_SESSION_SECRET || "dev-secret";
+    const newToken = signToken(
+      {
+        sub: target.id,
+        email: nextEmail,
+        name: nextName,
+        is_admin: target.is_admin,
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
+      },
+      secret,
+    );
+
+    res.cookies.set("auth-token", newToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
+  return res;
 }

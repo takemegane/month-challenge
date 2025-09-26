@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUser, useUpdateProfile } from "../../hooks/use-api";
 
 export default function AccountPage() {
-  const [loading, setLoading] = useState(true);
+  const { user, isLoading } = useUser();
+  const { updateProfile, isUpdating, error: updateError } = useUpdateProfile();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -13,27 +15,11 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch("/api/auth/me", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (data?.user) {
-          setName(data.user.name || "");
-          setEmail(data.user.email || "");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError("現在のユーザー情報を取得できませんでした");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (user) {
+      setName(user.name || "");
+      setEmail(user.email || "");
+    }
+  }, [user]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,39 +43,30 @@ export default function AccountPage() {
     }
 
     try {
-      const res = await fetch("/api/auth/profile", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          current_password: currentPassword || undefined,
-          new_password: newPassword || undefined,
-        }),
+      await updateProfile({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        current_password: currentPassword || undefined,
+        new_password: newPassword || undefined,
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        const code = data?.error || "update_failed";
-        if (code === "current_password_required") {
-          setError("メールやパスワードを変更する場合は現在のパスワードが必要です");
-        } else if (code === "invalid_current_password") {
-          setError("現在のパスワードが正しくありません");
-        } else if (code === "email_taken") {
-          setError("このメールアドレスは既に使用されています");
-        } else if (code === "nothing_to_update") {
-          setError("変更内容がありません");
-        } else {
-          setError("更新に失敗しました");
-        }
-        return;
-      }
+
       setMessage("プロフィールを更新しました");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err) {
-      setError("更新に失敗しました");
+    } catch (err: any) {
+      const code = err?.info?.error || "update_failed";
+      if (code === "current_password_required") {
+        setError("メールやパスワードを変更する場合は現在のパスワードが必要です");
+      } else if (code === "invalid_current_password") {
+        setError("現在のパスワードが正しくありません");
+      } else if (code === "email_taken") {
+        setError("このメールアドレスは既に使用されています");
+      } else if (code === "nothing_to_update") {
+        setError("変更内容がありません");
+      } else {
+        setError("更新に失敗しました");
+      }
     }
   }
 
@@ -100,7 +77,7 @@ export default function AccountPage() {
         <p className="text-sm text-orange-900/70">名前やメールアドレス、パスワードを変更できます。</p>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-md border border-orange-200 bg-white/80 p-6 text-center text-orange-900/80">
           読み込み中です...
         </div>
@@ -171,8 +148,12 @@ export default function AccountPage() {
           )}
 
           <div className="flex gap-3">
-            <button type="submit" className="btn-primary rounded px-4 py-2">
-              更新する
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="btn-primary rounded px-4 py-2 disabled:opacity-50"
+            >
+              {isUpdating ? '更新中...' : '更新する'}
             </button>
           </div>
           <p className="text-xs text-orange-900/60">

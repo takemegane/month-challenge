@@ -5,7 +5,7 @@ import { useUser, useUsers } from "../../hooks/use-api";
 type User = { id: string; name: string; email: string; is_admin?: boolean };
 
 export default function AdminPage() {
-  const { user: currentUser, isLoading: userLoading } = useUser();
+  const { user: currentUser, isLoading: userLoading, mutate: mutateUser } = useUser();
   const { users, isLoading: usersLoading, isError: usersError, mutate: mutateUsers } = useUsers();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -92,6 +92,10 @@ export default function AdminPage() {
         setProfileMsg('プロフィールを更新しました');
         setProfilePassword('');
         mutateUsers();
+        // If editing own profile, also refresh current user data
+        if (currentUser?.id === profileEditId) {
+          mutateUser();
+        }
       } else {
         const code = data?.error || 'update_failed';
         if (code === 'email_taken') {
