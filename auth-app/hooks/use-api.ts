@@ -189,9 +189,14 @@ export function useUpdateProfile() {
     '/api/auth/profile',
     putFetcher,
     {
-      onSuccess: () => {
-        // Refresh user data
-        mutate('/api/auth/me');
+      onSuccess: (data) => {
+        // Update the user cache directly with the returned data
+        if (data?.user) {
+          mutate('/api/auth/me', { user: data.user }, { revalidate: false });
+        } else {
+          // Fallback: refresh user data if no user data in response
+          mutate('/api/auth/me');
+        }
       },
     }
   );

@@ -93,8 +93,8 @@ export default function AdminPage() {
         setProfilePassword('');
         mutateUsers();
         // If editing own profile, also refresh current user data
-        if (currentUser?.id === profileEditId) {
-          mutateUser();
+        if (currentUser?.id === profileEditId && data?.user) {
+          mutateUser({ user: data.user }, { revalidate: false });
         }
       } else {
         const code = data?.error || 'update_failed';
