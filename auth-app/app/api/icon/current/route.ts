@@ -1,23 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
+import { existsSync } from "fs";
+import { join } from "path";
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if we have uploaded icons in memory
+    // First check if uploaded icon exists in file system
+    const uploadedIconPath = join(process.cwd(), "public", "icons", "icon-192.png");
+
+    if (existsSync(uploadedIconPath)) {
+      console.log("Using filesystem icon");
+      return NextResponse.json({
+        iconUrl: "/icons/icon-192.png",
+        type: "uploaded-fs"
+      });
+    }
+
+    // Then check if we have uploaded icons in memory
     const uploadedIcons = (global as any).uploadedIcons;
 
     if (uploadedIcons && uploadedIcons['icon-192']) {
-      // Return uploaded icon API endpoint
+      console.log("Using memory icon");
       return NextResponse.json({
         iconUrl: "/api/icon/pwa-icon-192",
-        type: "uploaded"
-      });
-    } else {
-      // Return default GitHub Raw URL icon
-      return NextResponse.json({
-        iconUrl: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg",
-        type: "default"
+        type: "uploaded-memory"
       });
     }
+
+    // Return default GitHub Raw URL icon
+    console.log("Using default icon");
+    return NextResponse.json({
+      iconUrl: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg",
+      type: "default"
+    });
+
   } catch (error) {
     console.error("Current icon API error:", error);
     // Fallback to default icon

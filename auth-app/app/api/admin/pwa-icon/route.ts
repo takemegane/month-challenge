@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "../../../../lib/db";
 import { requireAdmin } from "../../../../lib/admin-auth";
 import sharp from "sharp";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
 
 const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 
@@ -33,15 +34,27 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate base64 encoded icons for different sizes and store in database
+    // Try to write to file system (works in development, may fail in production)
+    let useFileSystem = false;
+    const iconsDir = join(process.cwd(), "public", "icons");
+
+    try {
+      await mkdir(iconsDir, { recursive: true });
+      useFileSystem = true;
+      console.log("Using file system storage");
+    } catch (error) {
+      console.log("File system not available, using memory storage");
+    }
+
     const iconData: Record<string, string> = {};
+    const generatedIcons = [];
     console.log("Starting icon generation for", ICON_SIZES.length, "sizes");
 
     for (const size of ICON_SIZES) {
       console.log(`Generating icon-${size}...`);
 
       try {
-        // Resize image and convert to base64
+        // Resize image
         const processedBuffer = await sharp(buffer)
           .resize(size, size, {
             fit: 'cover',
@@ -50,9 +63,39 @@ export async function POST(request: NextRequest) {
           .png()
           .toBuffer();
 
-        const base64 = processedBuffer.toString('base64');
-        iconData[`icon-${size}`] = base64;
-        console.log(`Successfully generated icon-${size} (${base64.length} chars)`);
+        if (useFileSystem) {
+          // Try to save to file system
+          try {
+            const filename = `icon-${size}.png`;
+            const filepath = join(iconsDir, filename);
+            await writeFile(filepath, processedBuffer);
+            console.log(`Successfully saved ${filename} to file system`);
+
+            generatedIcons.push({
+              src: `/icons/${filename}`,
+              sizes: `${size}x${size}`,
+              type: "image/png",
+              purpose: "maskable any"
+            });
+          } catch (writeError) {
+            console.log(`Failed to write ${size} to file, falling back to memory`);
+            useFileSystem = false;
+          }
+        }
+
+        if (!useFileSystem) {
+          // Store in memory as fallback
+          const base64 = processedBuffer.toString('base64');
+          iconData[`icon-${size}`] = base64;
+          console.log(`Successfully stored icon-${size} in memory (${base64.length} chars)`);
+
+          generatedIcons.push({
+            src: `/api/icon/pwa-icon-${size}`,
+            sizes: `${size}x${size}`,
+            type: "image/png",
+            purpose: "maskable any"
+          });
+        }
 
       } catch (sharpError) {
         console.log(`Error generating icon-${size}:`, sharpError);
@@ -60,27 +103,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // For now, we'll use a simple storage approach
-    // Store the icons in a format that can be retrieved later
-    console.log("Icons processed successfully");
+    // Update manifest.json if using file system
+    if (useFileSystem && generatedIcons.length > 0) {
+      try {
+        const manifestPath = join(process.cwd(), "public", "manifest.json");
+        const manifest = {
+          name: "月チャレ - 月間チャレンジトラッカー",
+          short_name: "月チャレ",
+          description: "コミュニティ日次投稿トラッカー（メールログイン版）",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#f0fdf4",
+          theme_color: "#fb923c",
+          orientation: "portrait-primary",
+          icons: generatedIcons
+        };
+        await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+        console.log("Updated manifest.json");
+      } catch (manifestError) {
+        console.log("Failed to update manifest.json:", manifestError);
+      }
+    }
 
-    // Instead of file storage, we'll return the data for dynamic manifest generation
-    const generatedIcons = ICON_SIZES.map(size => ({
-      src: `/api/icon/pwa-icon-${size}`,
-      sizes: `${size}x${size}`,
-      type: "image/png",
-      purpose: "maskable any"
-    }));
-
-    // Store icons data in environment/memory for this session
-    // Note: In production, this should use a proper storage solution
-    (global as any).uploadedIcons = iconData;
+    // Store icons data in memory (always do this as backup)
+    if (Object.keys(iconData).length > 0) {
+      (global as any).uploadedIcons = iconData;
+      console.log("Icons stored in memory as backup");
+    }
 
     return NextResponse.json({
       success: true,
       message: "アイコンを更新しました",
+      storageType: useFileSystem ? "filesystem" : "memory",
       icons: generatedIcons,
-      iconCount: Object.keys(iconData).length
+      iconCount: generatedIcons.length
     });
 
   } catch (error) {
