@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIcon } from "../../../../lib/icon-storage";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<any> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const params = await context.params;
-    const size = params?.size as string;
-
     // First check persistent storage
-    const iconData = getIcon(size);
+    const iconData = getIcon('192');
     if (iconData) {
       const buffer = Buffer.from(iconData, 'base64');
-      console.log(`Serving icon-${size} from persistent storage`);
 
       return new NextResponse(buffer, {
         headers: {
@@ -23,21 +16,6 @@ export async function GET(
       });
     }
 
-    // Check if we have uploaded icons in memory as fallback
-    const uploadedIcons = (global as any).uploadedIcons;
-
-    if (uploadedIcons && uploadedIcons[`icon-${size}`]) {
-      const base64Data = uploadedIcons[`icon-${size}`];
-      const buffer = Buffer.from(base64Data, 'base64');
-      console.log(`Serving icon-${size} from memory fallback`);
-
-      return new NextResponse(buffer, {
-        headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
-    }
 
     // Fallback to default icon
     const defaultIconUrl = `https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg`;
@@ -53,7 +31,7 @@ export async function GET(
       });
     }
 
-    // Ultimate fallback - return a simple generated icon
+    // Ultimate fallback
     return NextResponse.json({ error: "icon_not_found" }, { status: 404 });
 
   } catch (error) {

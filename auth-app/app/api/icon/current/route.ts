@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (hasIcons() && getIcon('192')) {
       console.log("Using persistent storage icon");
       return NextResponse.json({
-        iconUrl: "/api/icon/pwa-icon-192",
+        iconUrl: "/api/icon/icon-192",
         type: "uploaded-persistent"
       });
     }
