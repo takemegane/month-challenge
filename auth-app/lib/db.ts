@@ -223,6 +223,23 @@ async function mockQuery<T = any>(strings: TemplateStringsArray, ...values: any[
     return [] as T[];
   }
 
+  // Handle general profile updates (name, email, password_hash)
+  if (sql.includes("update auth_users") && sql.includes("set name")) {
+    const name = String(values[0] || "");
+    const email = String(values[1] || "");
+    const password_hash = String(values[2] || "");
+    const id = String(values[3] || "");
+
+    const users = await getUsers();
+    const user = users.find((u) => u.id === id);
+    if (user) {
+      user.name = name;
+      user.email = email;
+      user.password_hash = password_hash;
+    }
+    return [] as T[];
+  }
+
   return [] as T[];
 }
 
@@ -462,6 +479,40 @@ async function redisQuery<T = any>(strings: TemplateStringsArray, ...values: any
     if (user.email) {
       await redis.hSet(`user:${user.email}`, "is_admin", is_admin);
       await redis.hSet(`user_by_id:${id}`, "is_admin", is_admin);
+    }
+    return [] as T[];
+  }
+
+  // Handle general profile updates (name, email, password_hash)
+  if (sql.includes("update auth_users") && sql.includes("set name")) {
+    const name = String(values[0] || "");
+    const email = String(values[1] || "");
+    const password_hash = String(values[2] || "");
+    const id = String(values[3] || "");
+
+    console.log('Redis profile update:', { name, email, id });
+
+    const currentUser = await redis.hGetAll(`user_by_id:${id}`);
+    if (currentUser.id) {
+      const oldEmail = currentUser.email;
+      const updatedUser = {
+        id,
+        name,
+        email,
+        password_hash,
+        is_admin: currentUser.is_admin
+      };
+
+      // Update both Redis keys
+      await redis.hSet(`user:${email}`, updatedUser);
+      await redis.hSet(`user_by_id:${id}`, updatedUser);
+
+      // If email changed, remove old email key
+      if (oldEmail && oldEmail !== email) {
+        await redis.del(`user:${oldEmail}`);
+      }
+
+      console.log('Redis profile updated successfully');
     }
     return [] as T[];
   }
