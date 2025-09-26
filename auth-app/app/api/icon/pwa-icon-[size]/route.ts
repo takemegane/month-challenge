@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getIcon } from "../../../../lib/icon-storage";
 
 export async function GET(
   request: NextRequest,
@@ -8,12 +9,27 @@ export async function GET(
     const params = await context.params;
     const size = params?.size as string;
 
-    // Check if we have uploaded icons in memory
+    // First check persistent storage
+    const iconData = getIcon(size);
+    if (iconData) {
+      const buffer = Buffer.from(iconData, 'base64');
+      console.log(`Serving icon-${size} from persistent storage`);
+
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    }
+
+    // Check if we have uploaded icons in memory as fallback
     const uploadedIcons = (global as any).uploadedIcons;
 
     if (uploadedIcons && uploadedIcons[`icon-${size}`]) {
       const base64Data = uploadedIcons[`icon-${size}`];
       const buffer = Buffer.from(base64Data, 'base64');
+      console.log(`Serving icon-${size} from memory fallback`);
 
       return new NextResponse(buffer, {
         headers: {

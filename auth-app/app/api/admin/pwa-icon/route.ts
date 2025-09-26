@@ -3,6 +3,7 @@ import { requireAdmin } from "../../../../lib/admin-auth";
 import sharp from "sharp";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { setIcon } from "../../../../lib/icon-storage";
 
 const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 
@@ -84,10 +85,11 @@ export async function POST(request: NextRequest) {
         }
 
         if (!useFileSystem) {
-          // Store in memory as fallback
+          // Store in persistent storage
           const base64 = processedBuffer.toString('base64');
           iconData[`icon-${size}`] = base64;
-          console.log(`Successfully stored icon-${size} in memory (${base64.length} chars)`);
+          setIcon(size.toString(), base64);
+          console.log(`Successfully stored icon-${size} in persistent storage (${base64.length} chars)`);
 
           generatedIcons.push({
             src: `/api/icon/pwa-icon-${size}`,
@@ -125,11 +127,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Store icons data in memory (always do this as backup)
+    // Store icons data in memory as backup (for immediate access)
     if (Object.keys(iconData).length > 0) {
       (global as any).uploadedIcons = iconData;
       console.log("Icons stored in memory as backup");
     }
+
+    console.log("Icon upload completed successfully");
 
     return NextResponse.json({
       success: true,

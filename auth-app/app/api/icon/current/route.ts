@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { existsSync } from "fs";
 import { join } from "path";
+import { getIcon, hasIcons } from "../../../../lib/icon-storage";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +13,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         iconUrl: "/icons/icon-192.png",
         type: "uploaded-fs"
+      });
+    }
+
+    // Check persistent storage
+    if (hasIcons() && getIcon('192')) {
+      console.log("Using persistent storage icon");
+      return NextResponse.json({
+        iconUrl: "/api/icon/pwa-icon-192",
+        type: "uploaded-persistent"
       });
     }
 
