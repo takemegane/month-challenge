@@ -4,7 +4,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { useRouter } from "next/navigation";
 import { getJstTodayDate } from "../lib/date";
 import { CalendarGrid } from "./CalendarGrid";
-import { useEntries } from "../hooks/use-api";
+import { useEntries, prefetchCalendarRange } from "../hooks/use-api";
 
 function firstOfMonth(dateStr: string) {
   return dateStr.slice(0, 7) + "-01";
@@ -54,6 +54,12 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
     if (initialMonth) setMonth(firstOfMonth(initialMonth));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMonth]);
+
+  // Advanced prefetch strategy: preload adjacent and nearby months
+  useEffect(() => {
+    const currentMonth = month.slice(0, 7);
+    prefetchCalendarRange(currentMonth);
+  }, [month]);
 
   return (
     <div className="space-y-4">

@@ -204,19 +204,50 @@ export function useUpdateProfile() {
 }
 
 // Prefetch utilities for better navigation performance
-export function prefetchCalendarData() {
-  // Prefetch current month's entries
-  const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-  const currentMonth = today.toISOString().slice(0, 7);
-  const start = `${currentMonth}-01`;
-  const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const end = `${currentMonth}-${String(endDate).padStart(2, '0')}`;
+export function prefetchCalendarData(month?: string) {
+  // Prefetch specific month's entries
+  const targetMonth = month || new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })).toISOString().slice(0, 7);
+  const [year, monthNum] = targetMonth.split('-').map(Number);
 
-  // Preload current month data
+  const start = `${targetMonth}-01`;
+  const endDate = new Date(year, monthNum, 0).getDate();
+  const end = `${targetMonth}-${String(endDate).padStart(2, '0')}`;
+
+  // Preload specific month data
   preload(`/api/entries?since=${start}&until=${end}`, fetcher);
 
-  // Preload all entries (for general queries)
-  preload('/api/entries', fetcher);
+  // Preload all entries (for general queries) - only for current month
+  if (!month) {
+    preload('/api/entries', fetcher);
+  }
+}
+
+// Advanced prefetch strategy for calendar navigation
+export function prefetchCalendarRange(currentMonth: string) {
+  // Helper function to add/subtract months
+  const addMonths = (monthStr: string, diff: number): string => {
+    const [year, month] = monthStr.split('-').map(Number);
+    const date = new Date(year, month - 1 + diff, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // 1. Immediate prefetch: Adjacent months (high priority)
+  const prevMonth = addMonths(currentMonth, -1);
+  const nextMonth = addMonths(currentMonth, 1);
+
+  prefetchCalendarData(prevMonth);
+  prefetchCalendarData(nextMonth);
+
+  // 2. Delayed prefetch: 2-3 months range (medium priority)
+  setTimeout(() => {
+    const twoMonthsAgo = addMonths(currentMonth, -2);
+    const threeMonthsAgo = addMonths(currentMonth, -3);
+    const twoMonthsAhead = addMonths(currentMonth, 2);
+
+    prefetchCalendarData(twoMonthsAgo);
+    prefetchCalendarData(threeMonthsAgo);
+    prefetchCalendarData(twoMonthsAhead);
+  }, 1000); // 1秒後に低優先度プリフェッチ
 }
 
 export function prefetchListData() {
