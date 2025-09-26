@@ -190,10 +190,21 @@ export function useUpdateProfile() {
     putFetcher,
     {
       onSuccess: (data) => {
+        console.log('Profile update onSuccess:', data);
+
         // Update the user cache directly with the returned data
         if (data?.user) {
+          console.log('Updating cache with user data:', data.user);
           mutate('/api/auth/me', { user: data.user }, { revalidate: false });
+
+          // Also force invalidate all user-related caches
+          mutate(
+            (key) => typeof key === 'string' && key.includes('/api/auth'),
+            undefined,
+            { revalidate: true }
+          );
         } else {
+          console.log('No user data in response, fallback refresh');
           // Fallback: refresh user data if no user data in response
           mutate('/api/auth/me');
         }
