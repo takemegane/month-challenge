@@ -3,6 +3,7 @@ const nextConfig = {
   experimental: {
     reactCompiler: false,
   },
+  serverExternalPackages: ['sharp'],
 };
 
 export default nextConfig;

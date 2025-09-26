@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import sharp from "sharp";
 import { requireAdmin } from "../../../../lib/admin-auth";
@@ -13,15 +13,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    console.log("PWA icon upload started");
     const formData = await request.formData();
     const file = formData.get("icon") as File;
 
+    console.log("File received:", file ? `${file.name} (${file.size} bytes)` : "No file");
+
     if (!file) {
+      console.log("Error: No file provided");
       return NextResponse.json({ error: "no_file" }, { status: 400 });
     }
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
+      console.log("Error: Invalid file type:", file.type);
       return NextResponse.json({ error: "invalid_file_type" }, { status: 400 });
     }
 
@@ -31,33 +36,46 @@ export async function POST(request: NextRequest) {
 
     // Create icons directory if it doesn't exist
     const iconsDir = join(process.cwd(), "public", "icons");
+    console.log("Creating icons directory:", iconsDir);
     try {
       await mkdir(iconsDir, { recursive: true });
+      console.log("Icons directory created/confirmed");
     } catch (error) {
-      // Directory already exists, ignore
+      console.log("Error creating directory:", error);
+      return NextResponse.json({ error: "directory_creation_failed" }, { status: 500 });
     }
 
     // Generate all icon sizes
     const generatedIcons = [];
+    console.log("Starting icon generation for", ICON_SIZES.length, "sizes");
+
     for (const size of ICON_SIZES) {
       const filename = `icon-${size}.png`;
       const filepath = join(iconsDir, filename);
+      console.log(`Generating ${filename}...`);
 
-      // Resize and save image
-      await sharp(buffer)
-        .resize(size, size, {
-          fit: 'cover',
-          background: { r: 255, g: 255, b: 255, alpha: 0 }
-        })
-        .png()
-        .toFile(filepath);
+      try {
+        // Resize and save image
+        await sharp(buffer)
+          .resize(size, size, {
+            fit: 'cover',
+            background: { r: 255, g: 255, b: 255, alpha: 0 }
+          })
+          .png()
+          .toFile(filepath);
 
-      generatedIcons.push({
-        src: `/icons/${filename}`,
-        sizes: `${size}x${size}`,
-        type: "image/png",
-        purpose: "maskable any"
-      });
+        console.log(`Successfully created ${filename}`);
+
+        generatedIcons.push({
+          src: `/icons/${filename}`,
+          sizes: `${size}x${size}`,
+          type: "image/png",
+          purpose: "maskable any"
+        });
+      } catch (sharpError) {
+        console.log(`Error generating ${filename}:`, sharpError);
+        return NextResponse.json({ error: `icon_generation_failed_${size}` }, { status: 500 });
+      }
     }
 
     // Update manifest.json
@@ -78,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Also update layout.tsx metadata to use local icons
     const layoutPath = join(process.cwd(), "app", "layout.tsx");
-    const layoutContent = await require("fs/promises").readFile(layoutPath, "utf8");
+    const layoutContent = await readFile(layoutPath, "utf8");
 
     // Replace GitHub Raw URLs with local paths in layout.tsx
     const updatedLayoutContent = layoutContent

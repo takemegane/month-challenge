@@ -228,8 +228,14 @@ export default function AdminPage() {
           setIconUploadMsg("管理者権限が必要です");
         } else if (data.error === "invalid_file_type") {
           setIconUploadMsg("画像ファイルを選択してください");
+        } else if (data.error === "no_file") {
+          setIconUploadMsg("画像ファイルを選択してください");
+        } else if (data.error === "directory_creation_failed") {
+          setIconUploadMsg("ディレクトリの作成に失敗しました");
+        } else if (data.error && data.error.startsWith("icon_generation_failed")) {
+          setIconUploadMsg("画像の変換に失敗しました");
         } else {
-          setIconUploadMsg("アップロードに失敗しました");
+          setIconUploadMsg(`アップロードに失敗しました: ${data.error || "不明なエラー"} (HTTP ${res.status})`);
         }
       }
     } catch (error) {
