@@ -62,7 +62,7 @@ export default function Header() {
               <Link
                 href={currentMonthPath}
                 prefetch={true}
-                onMouseEnter={prefetchCalendar}
+                onMouseEnter={() => prefetchCalendar()}
                 className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 今月のカレンダー
@@ -80,7 +80,7 @@ export default function Header() {
                   <Link
                     href="/admin"
                     prefetch={true}
-                    onMouseEnter={prefetchAdmin}
+                    onMouseEnter={() => prefetchAdmin()}
                     className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     ユーザー設定
@@ -139,7 +139,7 @@ export default function Header() {
             <Link
               href={currentMonthPath}
               prefetch={true}
-              onTouchStart={prefetchCalendar}
+              onTouchStart={() => prefetchCalendar()}
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               今月のカレンダー
@@ -157,7 +157,7 @@ export default function Header() {
                 <Link
                   href="/admin"
                   prefetch={true}
-                  onTouchStart={prefetchAdmin}
+                  onTouchStart={() => prefetchAdmin()}
                   className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   ユーザー設定
