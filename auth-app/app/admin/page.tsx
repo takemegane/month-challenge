@@ -20,6 +20,8 @@ export default function AdminPage() {
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileOriginal, setProfileOriginal] = useState<User | null>(null);
+  const [iconUploadMsg, setIconUploadMsg] = useState<string | null>(null);
+  const [iconUploading, setIconUploading] = useState(false);
 
   // Check admin authorization based on current user
   const isAuthorized = currentUser?.is_admin || false;
@@ -184,6 +186,56 @@ export default function AdminPage() {
       }
     } catch (error) {
       setAdminMsg('ネットワークエラーが発生しました');
+    }
+  }
+
+  async function uploadPWAIcon(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setIconUploadMsg(null);
+    setIconUploading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const file = formData.get("icon") as File;
+
+    if (!file || file.size === 0) {
+      setIconUploadMsg("画像ファイルを選択してください");
+      setIconUploading(false);
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setIconUploadMsg("ファイルサイズが大きすぎます（5MB以下にしてください）");
+      setIconUploading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/pwa-icon", {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setIconUploadMsg("PWAアイコンを更新しました。アプリをリロードしてください。");
+        // Reset form
+        (e.target as HTMLFormElement).reset();
+      } else {
+        if (data.error === "unauthorized") {
+          setIconUploadMsg("管理者権限が必要です");
+        } else if (data.error === "invalid_file_type") {
+          setIconUploadMsg("画像ファイルを選択してください");
+        } else {
+          setIconUploadMsg("アップロードに失敗しました");
+        }
+      }
+    } catch (error) {
+      setIconUploadMsg("ネットワークエラーが発生しました");
+    } finally {
+      setIconUploading(false);
     }
   }
 
@@ -357,6 +409,55 @@ export default function AdminPage() {
           ユーザーに管理者権限を付与または剥奪できます。管理者は全ての機能にアクセス可能になります。
         </p>
         {adminMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{adminMsg}</div>}
+      </div>
+
+      {/* PWAアイコン管理 */}
+      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-lg space-y-4">
+        <h2 className="font-medium">PWAアイコン設定</h2>
+        <p className="text-sm text-gray-600">
+          スマートフォンのホーム画面に表示されるアプリアイコンを設定できます。
+          PNG、JPEG、WebP形式の画像をアップロードしてください。
+        </p>
+
+        <form onSubmit={uploadPWAIcon} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              アイコン画像（推奨: 512x512px以上の正方形画像）
+            </label>
+            <input
+              type="file"
+              name="icon"
+              accept="image/*"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              disabled={iconUploading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              ファイルサイズ: 5MB以下
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={iconUploading}
+            className={`px-4 py-2 rounded-md font-medium ${
+              iconUploading
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-orange-600 text-white hover:bg-orange-700"
+            }`}
+          >
+            {iconUploading ? "アップロード中..." : "アイコンを更新"}
+          </button>
+        </form>
+
+        {iconUploadMsg && (
+          <div className={`text-sm p-2 rounded ${
+            iconUploadMsg.includes("成功") || iconUploadMsg.includes("更新")
+              ? "text-green-700 bg-green-50"
+              : "text-red-700 bg-red-50"
+          }`}>
+            {iconUploadMsg}
+          </div>
+        )}
       </div>
 
       {/* ユーザー一覧 */}
