@@ -45,7 +45,7 @@ export async function PUT(req: Request) {
   const current = rows[0];
   if (!current) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const wantsEmailChange = !!body.email && body.email !== current.email.toLowerCase();
+  const wantsEmailChange = body.email !== undefined && body.email !== current.email.toLowerCase();
   const wantsPasswordChange = !!body.new_password;
   const mustCheckPassword = wantsEmailChange || wantsPasswordChange;
 
