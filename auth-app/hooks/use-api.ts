@@ -284,6 +284,34 @@ export function prefetchOverviewData(month?: string) {
   preload(`/api/admin/overview?month=${currentMonth}`, fetcher);
 }
 
+// Advanced prefetch strategy for admin overview navigation
+export function prefetchOverviewRange(currentMonth: string) {
+  // Helper function to add/subtract months
+  const addMonths = (monthStr: string, diff: number): string => {
+    const [year, month] = monthStr.split('-').map(Number);
+    const date = new Date(year, month - 1 + diff, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // 1. Immediate prefetch: Adjacent months (high priority)
+  const prevMonth = addMonths(currentMonth, -1);
+  const nextMonth = addMonths(currentMonth, 1);
+
+  prefetchOverviewData(prevMonth);
+  prefetchOverviewData(nextMonth);
+
+  // 2. Delayed prefetch: 2-3 months range (medium priority)
+  setTimeout(() => {
+    const twoMonthsAgo = addMonths(currentMonth, -2);
+    const threeMonthsAgo = addMonths(currentMonth, -3);
+    const twoMonthsAhead = addMonths(currentMonth, 2);
+
+    prefetchOverviewData(twoMonthsAgo);
+    prefetchOverviewData(threeMonthsAgo);
+    prefetchOverviewData(twoMonthsAhead);
+  }, 1000); // 1秒後に低優先度プリフェッチ
+}
+
 // Overview data hook
 export function useOverview(month?: string) {
   const key = month ? `/api/admin/overview?month=${month}` : null;

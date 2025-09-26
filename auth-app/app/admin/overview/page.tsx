@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useUser, useOverview, useCheckOperation } from "../../../hooks/use-api";
+import { useMemo, useState, useEffect } from "react";
+import { useUser, useOverview, useCheckOperation, prefetchOverviewRange } from "../../../hooks/use-api";
 
 function formatMonthLabel(month: string) {
   const [year, m] = month.split("-");
@@ -65,6 +65,11 @@ export default function AdminOverviewPage() {
       setEditUser(data.users[0].id);
     }
   }, [data?.users, editUser]);
+
+  // Advanced prefetch strategy: preload adjacent and nearby months for admin overview
+  useEffect(() => {
+    prefetchOverviewRange(month);
+  }, [month]);
 
   const handleDownloadCsv = async () => {
     try {
