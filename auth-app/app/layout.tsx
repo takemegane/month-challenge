@@ -13,14 +13,15 @@ export const metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-72.png.svg", sizes: "72x72", type: "image/svg+xml" },
-      { url: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-96.png.svg", sizes: "96x96", type: "image/svg+xml" },
-      { url: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-128.png.svg", sizes: "128x128", type: "image/svg+xml" },
-      { url: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/api/icon/icon-72", sizes: "72x72", type: "image/png" },
+      { url: "/api/icon/icon-96", sizes: "96x96", type: "image/png" },
+      { url: "/api/icon/icon-128", sizes: "128x128", type: "image/png" },
+      { url: "/api/icon/icon-192", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-152.png.svg", sizes: "152x152", type: "image/svg+xml" },
-      { url: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/api/icon/icon-152", sizes: "152x152", type: "image/png" },
+      { url: "/api/icon/icon-180", sizes: "180x180", type: "image/png" },
+      { url: "/api/icon/icon-192", sizes: "192x192", type: "image/png" },
     ],
   },
   appleWebApp: {

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Note: Redis cleanup is handled in API routes, not middleware (Webpack compatibility)
 
-const PUBLIC_PATHS = ["/auth/sign-in", "/auth/sign-up", "/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/auth/me", "/api/health", "/api/cron", "/api/icon"];
+const PUBLIC_PATHS = ["/auth/sign-in", "/auth/sign-up", "/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/auth/me", "/api/health", "/api/cron", "/api/icon", "/manifest.json"];
 
 export function middleware(req: NextRequest) {
   const url = new URL(req.url);
