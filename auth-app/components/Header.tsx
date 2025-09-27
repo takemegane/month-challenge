@@ -1,21 +1,15 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useUser, usePrefetch } from "../hooks/use-api";
-import { useMemo } from "react";
+import { useUser } from "../hooks/use-api";
 
 export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
   const { user, isLoading } = useUser();
-  const { prefetchCalendar, prefetchList, prefetchAdmin, prefetchOverview } = usePrefetch();
 
   // Generate current month for calendar reset
-  const currentMonthPath = useMemo(() => {
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    const currentMonth = today.toISOString().slice(0, 7);
-    return `/calendar?month=${currentMonth}`;
-  }, []);
+  const currentMonthPath = `/calendar?month=${new Date().toISOString().slice(0, 7)}`;
 
   const handleLogout = async () => {
     try {
@@ -52,39 +46,39 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 backdrop-blur bg-white/60 border-b border-orange-200/60">
+    <header className="sticky top-0 z-50 bg-white border-b border-orange-200">
       <div className="mx-auto max-w-4xl px-4 py-3">
         {/* Desktop layout */}
         <div className="hidden sm:flex items-center justify-between">
           <Link href="/calendar" className="font-semibold tracking-tight text-2xl text-orange-800">月チャレ</Link>
           <div className="flex items-center gap-4">
             <nav className="flex flex-wrap gap-3">
-              <button
-                onClick={() => window.location.href = currentMonthPath}
-                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base cursor-pointer"
+              <Link
+                href={currentMonthPath}
+                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 今月のカレンダー
-              </button>
-              <button
-                onClick={() => window.location.href = "/list"}
-                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base cursor-pointer"
+              </Link>
+              <Link
+                href="/list"
+                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 一覧
-              </button>
+              </Link>
               {user.is_admin && (
                 <>
-                  <button
-                    onClick={() => window.location.href = "/admin"}
-                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base cursor-pointer"
+                  <Link
+                    href="/admin"
+                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     ユーザー設定
-                  </button>
-                  <button
-                    onClick={() => window.location.href = "/admin/overview"}
-                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base cursor-pointer"
+                  </Link>
+                  <Link
+                    href="/admin/overview"
+                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     チェック管理
-                  </button>
+                  </Link>
                 </>
               )}
             </nav>
@@ -128,32 +122,32 @@ export default function Header() {
 
           {/* Bottom row: Navigation buttons */}
           <nav className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => window.location.href = currentMonthPath}
-              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm cursor-pointer"
+            <Link
+              href={currentMonthPath}
+              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               今月のカレンダー
-            </button>
-            <button
-              onClick={() => window.location.href = "/list"}
-              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm cursor-pointer"
+            </Link>
+            <Link
+              href="/list"
+              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               一覧
-            </button>
+            </Link>
             {user.is_admin && (
               <>
-                <button
-                  onClick={() => window.location.href = "/admin"}
-                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm cursor-pointer"
+                <Link
+                  href="/admin"
+                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   ユーザー設定
-                </button>
-                <button
-                  onClick={() => window.location.href = "/admin/overview"}
-                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm cursor-pointer"
+                </Link>
+                <Link
+                  href="/admin/overview"
+                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   チェック管理
-                </button>
+                </Link>
               </>
             )}
           </nav>
