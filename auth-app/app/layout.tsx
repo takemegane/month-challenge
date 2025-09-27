@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import Header from "../components/Header";
 import AuthLayout from "../components/AuthLayout";
 import SWRProvider from "../components/SWRProvider";
-import FaviconUpdater from "../components/FaviconUpdater";
-import AppleTouchIcon from "../components/AppleTouchIcon";
 
 export const metadata = {
   title: "月チャレ",
@@ -52,8 +50,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         }}
       >
         <SWRProvider>
-          <FaviconUpdater />
-          <AppleTouchIcon />
           <Header />
           <AuthLayout>{children}</AuthLayout>
         </SWRProvider>
