@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { hasIcons } from "../../lib/icon-storage";
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const baseManifest = {
     name: "月チャレ - 月間チャレンジトラッカー",
