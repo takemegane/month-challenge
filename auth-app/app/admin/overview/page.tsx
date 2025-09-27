@@ -352,11 +352,11 @@ export default function AdminOverviewPage() {
                     <table className="min-w-full divide-y divide-orange-200 text-sm">
                     <thead className="sticky top-0 bg-orange-50 text-orange-900/80 z-10">
                       <tr>
-                        <th className="px-3 py-2 text-center font-medium w-12">順位</th>
-                        <th className="px-4 py-2 text-left font-medium">ユーザー</th>
-                        <th className="px-4 py-2 text-left font-medium">メール</th>
-                        <th className="px-4 py-2 text-right font-medium">チェック数</th>
-                        <th className="px-4 py-2 text-left font-medium">進捗</th>
+                        <th className="px-2 py-2 text-center font-medium w-10">順位</th>
+                        <th className="px-3 py-2 text-left font-medium">ユーザー</th>
+                        <th className="hidden sm:table-cell px-3 py-2 text-left font-medium">メール</th>
+                        <th className="px-3 py-2 text-right font-medium w-20">チェック数</th>
+                        <th className="px-3 py-2 text-left font-medium">進捗</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-orange-100">
@@ -393,11 +393,11 @@ export default function AdminOverviewPage() {
 
                         return (
                           <tr key={user.id} className="text-orange-900/90">
-                            <td className="px-3 py-2 text-center font-semibold text-orange-800 w-12">{rank}</td>
-                            <td className="px-4 py-2 font-medium">{user.name}</td>
-                            <td className="px-4 py-2 text-orange-900/70">{user.email}</td>
-                            <td className="px-4 py-2 text-right">{user.total}</td>
-                            <td className="px-4 py-2">
+                            <td className="px-2 py-2 text-center font-semibold text-orange-800 w-10">{rank}</td>
+                            <td className="px-3 py-2 font-medium">{user.name}</td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-orange-900/70">{user.email}</td>
+                            <td className="px-3 py-2 text-right w-20">{user.total}</td>
+                            <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
                                 <div className="h-2 flex-1 rounded-full bg-orange-100">
                                   <div
