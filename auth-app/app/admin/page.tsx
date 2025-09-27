@@ -193,6 +193,43 @@ export default function AdminPage() {
     }
   }
 
+  function downloadUsersCSV() {
+    if (!users || users.length === 0) {
+      alert('ダウンロードするユーザーがありません');
+      return;
+    }
+
+    // CSVヘッダー
+    const headers = ['ID', '名前', 'メールアドレス', '管理者権限'];
+
+    // CSVデータ作成
+    const csvData = users.map(user => [
+      user.id,
+      user.name,
+      user.email,
+      user.is_admin ? 'あり' : 'なし'
+    ]);
+
+    // CSV文字列作成
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    // BOMを追加（Excel対応）
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // ダウンロード
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `users_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   function handleIconFileChange(event: ChangeEvent<HTMLInputElement>) {
     setIconUploadMsg(null);
     setIconPreviewError(null);
@@ -340,15 +377,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="card-title">管理者画面</h1>
-      <div className="flex flex-wrap justify-end gap-2 text-sm">
-        <a
-          href="/admin/overview"
-          className="rounded-md border border-purple-200 bg-purple-50 px-3 py-1 text-purple-800 hover:bg-purple-100"
-        >
-          チェック管理へ
-        </a>
-      </div>
+      <h1 className="card-title">システム設定</h1>
 
       {usersError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -573,7 +602,24 @@ export default function AdminPage() {
 
       {/* ユーザー一覧 */}
       <div className="rounded-lg border border-orange-200/70 bg-white p-4">
-        <h2 className="font-medium mb-4">ユーザー一覧</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-medium">ユーザー一覧</h2>
+            {!usersLoading && (
+              <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm font-medium rounded-full">
+                総登録者数: {users.length}名
+              </span>
+            )}
+          </div>
+          {!usersLoading && users.length > 0 && (
+            <button
+              onClick={downloadUsersCSV}
+              className="px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+            >
+              📊 CSV出力
+            </button>
+          )}
+        </div>
         <div className="space-y-2">
           {usersLoading ? (
             <div className="text-gray-500 py-4 text-center">
