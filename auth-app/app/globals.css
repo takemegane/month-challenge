@@ -6,6 +6,7 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'YuGothic', 'MS PGothic', sans-serif;
 }
 
 /* Fallback background (in case Tailwind utilities are not processed) */

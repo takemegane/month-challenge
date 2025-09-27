@@ -327,11 +327,12 @@ export function prefetchOverviewRange(currentMonth: string) {
 // Overview data hook
 export function useOverview(month?: string) {
   const key = month ? `/api/admin/overview?month=${month}` : null;
-  const { data, error, isLoading, mutate } = useSWR(key, fetcher);
+  const { data, error, isLoading, isValidating, mutate } = useSWR(key, fetcher);
 
   return {
     overview: data,
     isLoading,
+    isValidating,
     isError: !!error,
     mutate
   };
@@ -384,17 +385,10 @@ export function useCheckOperation() {
               }
               return user;
             });
+          }
 
-            // Update totals
-            const totalEntries = updatedData.users.reduce((sum: number, user: any) => sum + user.total, 0);
-            const activeUsers = updatedData.users.filter((user: any) => user.total > 0).length;
-            const averagePerUser = activeUsers > 0 ? Number((totalEntries / activeUsers).toFixed(1)) : 0;
-
-            updatedData.totals = {
-              totalEntries,
-              activeUsers,
-              averagePerActiveUser: averagePerUser
-            };
+          if (updatedData.totals) {
+            delete updatedData.totals;
           }
 
           return updatedData;

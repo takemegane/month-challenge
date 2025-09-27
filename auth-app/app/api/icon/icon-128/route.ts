@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIcon } from "../../../../lib/icon-storage";
+import { withNoStore } from "../../../../lib/http-cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,10 +10,9 @@ export async function GET(request: NextRequest) {
       const buffer = Buffer.from(iconData, 'base64');
 
       return new NextResponse(buffer, {
-        headers: {
+        headers: withNoStore({
           'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=3600',
-        },
+        }),
       });
     }
 

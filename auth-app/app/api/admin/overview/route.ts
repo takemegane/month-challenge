@@ -81,10 +81,6 @@ export async function GET(req: Request) {
     };
   });
 
-  const totalEntries = entryRows.length;
-  const activeUsers = userSummaries.filter((u) => u.total > 0).length;
-  const averagePerUser = activeUsers > 0 ? Number((totalEntries / activeUsers).toFixed(1)) : 0;
-
   if (format === "csv") {
     const header = "user_id,user_name,user_email,entry_date\n";
     const userMap = new Map(users.map((u) => [u.id, u]));
@@ -119,11 +115,6 @@ export async function GET(req: Request) {
   return NextResponse.json({
     month,
     range: { start: startStr, end: endStr },
-    totals: {
-      totalEntries,
-      activeUsers,
-      averagePerActiveUser: averagePerUser,
-    },
     users: userSummaries,
     daily: dailyStats,
   });

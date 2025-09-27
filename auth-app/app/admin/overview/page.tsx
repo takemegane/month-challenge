@@ -19,6 +19,9 @@ function addMonths(month: string, diff: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+const SKELETON_USERS = Array.from({ length: 5 }, (_, idx) => idx);
+const SKELETON_DAYS = Array.from({ length: 10 }, (_, idx) => idx + 1);
+
 type OverviewUser = {
   id: string;
   name: string;
@@ -31,7 +34,6 @@ type OverviewUser = {
 type OverviewResponse = {
   month: string;
   range: { start: string; end: string };
-  totals: { totalEntries: number; activeUsers: number; averagePerActiveUser: number };
   users: OverviewUser[];
   daily: Array<{ date: string; count: number }>;
 };
@@ -39,7 +41,7 @@ type OverviewResponse = {
 export default function AdminOverviewPage() {
   const { user: currentUser, isLoading: userLoading } = useUser();
   const [month, setMonth] = useState<string>(getCurrentMonth());
-  const { overview, isLoading: overviewLoading, isError: overviewError } = useOverview(month);
+  const { overview, isLoading: overviewLoading, isValidating, isError: overviewError } = useOverview(month);
   const { performCheck, isUpdating, error: checkError } = useCheckOperation();
   const [editUser, setEditUser] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
@@ -48,10 +50,10 @@ export default function AdminOverviewPage() {
   // Check admin authorization based on current user
   const isAuthorized = currentUser?.is_admin || false;
   const authLoading = userLoading;
-  const loading = overviewLoading;
+  const showSkeleton = overviewLoading && !overview;
+  const isRefreshing = isValidating && !!overview;
   const error = overviewError ? "データの取得に失敗しました" : null;
-  const data = overview;
-
+  const data = overview as OverviewResponse | undefined;
 
   const days = useMemo(() => data?.daily.map((d: { date: string; count: number }) => d.date) ?? [], [data]);
 
@@ -59,11 +61,11 @@ export default function AdminOverviewPage() {
     return [...(data?.users || [])].sort((a, b) => a.name.localeCompare(b.name));
   }, [data?.users]);
 
-  // Auto-select first user when data loads
-  useMemo(() => {
-    if (data?.users?.length && !editUser) {
-      setEditUser(data.users[0].id);
-    }
+  // Reset selection if the chosen user no longer exists
+  useEffect(() => {
+    if (!editUser) return;
+    if (data?.users?.some((u: OverviewUser) => u.id === editUser)) return;
+    setEditUser("");
   }, [data?.users, editUser]);
 
   // Advanced prefetch strategy: preload adjacent and nearby months for admin overview
@@ -185,41 +187,111 @@ export default function AdminOverviewPage() {
       </div>
 
 
-      {loading && (
-        <div className="rounded-lg border border-orange-200 bg-white/80 p-6 text-center text-orange-900/80">
-          読み込み中です...
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
-          データを取得できませんでした: {error}
-        </div>
-      )}
-
-      {!loading && !error && data && (
+      {showSkeleton && (
         <>
-          <section className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-orange-200 bg-white/80 p-4 shadow-sm">
-              <div className="text-sm text-orange-800/70">総チェック数</div>
-              <div className="mt-2 text-2xl font-semibold text-orange-900/90">{data.totals.totalEntries}</div>
-            </div>
-            <div className="rounded-xl border border-orange-200 bg-white/80 p-4 shadow-sm">
-              <div className="text-sm text-orange-800/70">チェック済みユーザー</div>
-              <div className="mt-2 text-2xl font-semibold text-orange-900/90">{data.totals.activeUsers}名</div>
-            </div>
-            <div className="rounded-xl border border-orange-200 bg-white/80 p-4 shadow-sm">
-              <div className="text-sm text-orange-800/70">平均日数</div>
-              <div className="mt-2 text-2xl font-semibold text-orange-900/90">{data.totals.averagePerActiveUser}日</div>
-            </div>
-          </section>
-
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-orange-900/90">ユーザー別件数</h2>
               <div className="text-sm text-orange-900/70">上位20名を表示</div>
             </div>
-            <div className="overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+              {isRefreshing && (
+                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
+              )}
+              <table className="min-w-full divide-y divide-orange-200 text-sm">
+                <tbody className="divide-y divide-orange-100">
+                  {SKELETON_USERS.map((key) => (
+                    <tr key={`skeleton-user-${key}`} className="animate-pulse text-orange-900/60">
+                      <td className="px-4 py-3">
+                        <div className="h-4 w-32 rounded bg-orange-100" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-4 w-48 rounded bg-orange-100" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="ml-auto h-4 w-10 rounded bg-orange-100" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-2 rounded bg-orange-100" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
+            <div className="h-4 w-32 rounded bg-orange-100 animate-pulse" />
+            <div className="space-y-3">
+              <div className="h-4 w-24 rounded bg-orange-100 animate-pulse" />
+              <div className="h-10 rounded bg-orange-100 animate-pulse" />
+              <div className="h-4 w-24 rounded bg-orange-100 animate-pulse" />
+              <div className="h-10 rounded bg-orange-100 animate-pulse" />
+              <div className="flex gap-2">
+                <div className="h-10 flex-1 rounded bg-green-100 animate-pulse" />
+                <div className="h-10 flex-1 rounded bg-red-100 animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-orange-900/90">日別チェック状況</h2>
+              <div className="text-sm text-orange-900/70">6行表示・縦スクロール対応</div>
+            </div>
+            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+              {isRefreshing && (
+                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
+              )}
+              <div className="max-h-[12rem] overflow-y-auto overflow-x-auto">
+                <table className="min-w-full border-separate border-spacing-0 text-xs">
+                  <tbody>
+                    {SKELETON_USERS.map((key) => (
+                      <tr key={`skeleton-daily-${key}`} className="animate-pulse text-orange-900/60">
+                        <td className="px-3 py-2 min-w-[120px]">
+                          <div className="h-4 w-32 rounded bg-orange-100" />
+                        </td>
+                        <td className="px-3 py-2 min-w-[60px]">
+                          <div className="h-4 w-10 rounded bg-orange-100" />
+                        </td>
+                        {SKELETON_DAYS.map((day) => (
+                          <td key={`skeleton-daily-${key}-${day}`} className="px-2 py-1 min-w-[40px]">
+                            <div className="h-5 w-5 rounded-full bg-orange-100" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {!showSkeleton && error && !data && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
+          データを取得できませんでした: {error}
+        </div>
+      )}
+
+      {data && !showSkeleton && (
+        <>
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              最新データの取得に失敗しました。表示中の情報はキャッシュです。
+            </div>
+          )}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-orange-900/90">ユーザー別件数</h2>
+              <div className="text-sm text-orange-900/70">上位20名を表示</div>
+            </div>
+            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+              {isRefreshing && (
+                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
+              )}
               <table className="min-w-full divide-y divide-orange-200 text-sm">
                 <thead className="bg-orange-50 text-orange-900/80">
                   <tr>
@@ -310,7 +382,10 @@ export default function AdminOverviewPage() {
               <h2 className="text-lg font-semibold text-orange-900/90">日別チェック状況</h2>
               <div className="text-sm text-orange-900/70">6行表示・縦スクロール対応</div>
             </div>
-            <div className="overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+              {isRefreshing && (
+                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
+              )}
               <div className="max-h-[12rem] overflow-y-auto overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-0 text-xs">
                   <thead className="sticky top-0 bg-orange-50 z-10">

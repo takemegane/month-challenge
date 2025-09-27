@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ChangeEvent } from "react";
 import { useUser, useUsers } from "../../hooks/use-api";
 
 type User = { id: string; name: string; email: string; is_admin?: boolean };
@@ -22,6 +22,10 @@ export default function AdminPage() {
   const [profileOriginal, setProfileOriginal] = useState<User | null>(null);
   const [iconUploadMsg, setIconUploadMsg] = useState<string | null>(null);
   const [iconUploading, setIconUploading] = useState(false);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [iconPreviewName, setIconPreviewName] = useState<string>("");
+  const [iconPreviewError, setIconPreviewError] = useState<string | null>(null);
+  const [currentIconKey, setCurrentIconKey] = useState<string>(Date.now().toString());
 
   // Check admin authorization based on current user
   const isAuthorized = currentUser?.is_admin || false;
@@ -189,6 +193,48 @@ export default function AdminPage() {
     }
   }
 
+  function handleIconFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setIconUploadMsg(null);
+    setIconPreviewError(null);
+
+    const file = event.target.files?.[0];
+    if (!file) {
+      setIconPreview(null);
+      setIconPreviewName("");
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setIconPreview(null);
+      setIconPreviewName("");
+      setIconPreviewError('画像ファイルを選択してください');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setIconPreview(null);
+      setIconPreviewName("");
+      setIconPreviewError('ファイルサイズが大きすぎます（5MB以下にしてください）');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setIconPreview(reader.result);
+        setIconPreviewName(file.name);
+      }
+    };
+    reader.onerror = () => {
+      setIconPreview(null);
+      setIconPreviewName("");
+      setIconPreviewError('プレビューの読み込みに失敗しました');
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function uploadPWAIcon(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIconUploadMsg(null);
@@ -199,6 +245,9 @@ export default function AdminPage() {
 
     if (!file || file.size === 0) {
       setIconUploadMsg("画像ファイルを選択してください");
+      setIconPreviewError("画像ファイルを選択してください");
+      setIconPreview(null);
+      setIconPreviewName("");
       setIconUploading(false);
       return;
     }
@@ -206,6 +255,9 @@ export default function AdminPage() {
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setIconUploadMsg("ファイルサイズが大きすぎます（5MB以下にしてください）");
+      setIconPreviewError("ファイルサイズが大きすぎます（5MB以下にしてください）");
+      setIconPreview(null);
+      setIconPreviewName("");
       setIconUploading(false);
       return;
     }
@@ -223,10 +275,18 @@ export default function AdminPage() {
         setIconUploadMsg("アイコンを更新しました。");
         // Reset form
         (e.target as HTMLFormElement).reset();
-        // Refresh page after a short delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        setIconPreview(null);
+        setIconPreviewName("");
+        setIconPreviewError(null);
+        // Update current icon display immediately with cache busting
+        const newKey = Date.now().toString();
+        setCurrentIconKey(newKey);
+        console.log("Icon upload successful, updating icon key to:", newKey);
+
+        // Trigger favicon update
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('faviconUpdate'));
+        }
       } else {
         if (data.error === "unauthorized") {
           setIconUploadMsg("管理者権限が必要です");
@@ -303,12 +363,17 @@ export default function AdminPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">現在のアイコン:</span>
             <img
-              src="/api/icon/icon-192"
+              src={`/api/icon/icon-192?v=${currentIconKey}`}
               alt="Current Icon"
               className="w-8 h-8 rounded border border-gray-200 shadow-sm"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
+                console.log("Icon load failed, trying filesystem icon");
+                target.src = `/icons/icon-192.png?v=${currentIconKey}`;
+                target.onerror = () => {
+                  console.log("Filesystem icon also failed, hiding");
+                  target.style.display = 'none';
+                };
               }}
             />
           </div>
@@ -319,20 +384,41 @@ export default function AdminPage() {
         </p>
 
         <form onSubmit={uploadPWAIcon} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              アイコン画像（推奨: 512x512px以上の正方形画像）
-            </label>
-            <input
-              type="file"
-              name="icon"
-              accept="image/*"
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-              disabled={iconUploading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              ファイルサイズ: 5MB以下
-            </p>
+          <div className="space-y-3 sm:flex sm:items-start sm:gap-4 sm:space-y-0">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                アイコン画像（推奨: 512x512px以上の正方形画像）
+              </label>
+              <input
+                type="file"
+                name="icon"
+                accept="image/*"
+                onChange={handleIconFileChange}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                disabled={iconUploading}
+              />
+              <p className="text-xs text-gray-500 mt-1">ファイルサイズ: 5MB以下</p>
+              {iconPreviewError && (
+                <p className="mt-1 text-xs text-red-600">{iconPreviewError}</p>
+              )}
+            </div>
+            <div className="mt-3 flex flex-col items-center gap-2 sm:mt-0 sm:w-32">
+              <span className="text-xs font-medium text-gray-600">プレビュー</span>
+              <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-orange-200 bg-orange-50/60 text-orange-400">
+                {iconPreview ? (
+                  <img
+                    src={iconPreview}
+                    alt={iconPreviewName || "選択中のアイコンプレビュー"}
+                    className="h-full w-full rounded-lg object-cover"
+                  />
+                ) : (
+                  <span className="text-[10px] text-orange-400">未選択</span>
+                )}
+              </div>
+              {iconPreviewName && (
+                <span className="w-24 truncate text-center text-[10px] text-gray-500">{iconPreviewName}</span>
+              )}
+            </div>
           </div>
 
           <button

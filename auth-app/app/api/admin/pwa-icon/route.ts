@@ -5,7 +5,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { setIcon } from "../../../../lib/icon-storage";
 
-const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+const ICON_SIZES = [72, 96, 128, 144, 152, 180, 192, 384, 512];
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);

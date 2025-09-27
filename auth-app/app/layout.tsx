@@ -1,11 +1,10 @@
 import "./globals.css";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
 import Header from "../components/Header";
 import AuthLayout from "../components/AuthLayout";
 import SWRProvider from "../components/SWRProvider";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+import FaviconUpdater from "../components/FaviconUpdater";
+import AppleTouchIcon from "../components/AppleTouchIcon";
 
 export const metadata = {
   title: "月チャレ",
@@ -13,15 +12,15 @@ export const metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/api/icon/icon-72", sizes: "72x72", type: "image/png" },
-      { url: "/api/icon/icon-96", sizes: "96x96", type: "image/png" },
-      { url: "/api/icon/icon-128", sizes: "128x128", type: "image/png" },
-      { url: "/api/icon/icon-192", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-72.png", sizes: "72x72", type: "image/png" },
+      { url: "/icons/icon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/icon-128.png", sizes: "128x128", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/api/icon/icon-152", sizes: "152x152", type: "image/png" },
-      { url: "/api/icon/icon-180", sizes: "180x180", type: "image/png" },
-      { url: "/api/icon/icon-192", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
   },
   appleWebApp: {
@@ -41,11 +40,11 @@ export const metadata = {
   },
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
       <body
-        className={`${inter.variable} antialiased text-zinc-800 min-h-screen`}
+        className="font-sans antialiased text-zinc-800 min-h-screen"
         style={{
           margin: 0,
           padding: 0,
@@ -53,6 +52,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         }}
       >
         <SWRProvider>
+          <FaviconUpdater />
+          <AppleTouchIcon />
           <Header />
           <AuthLayout>{children}</AuthLayout>
         </SWRProvider>

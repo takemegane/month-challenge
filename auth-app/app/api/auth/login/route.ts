@@ -25,8 +25,24 @@ export async function POST(req: Request) {
   if (!verifyPassword(password, u.password_hash)) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
   const token = signToken({ sub: u.id, email, name: u.name, is_admin: u.is_admin, exp: Math.floor(Date.now()/1000) + 60*60*24*30 }, secret);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log("Setting auth cookie for user:", { id: u.id, email, name: u.name });
+    console.log("Token length:", token.length);
+    console.log("Environment:", process.env.NODE_ENV);
+  }
+
   const res = NextResponse.json({ user: { id: u.id, email, name: u.name, is_admin: u.is_admin } });
-  res.cookies.set('auth-token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60*60*24*30 });
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60*60*24*30
+  };
+
+  res.cookies.set('auth-token', token, cookieOptions);
+
   return res;
 }
 

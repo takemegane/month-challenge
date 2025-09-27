@@ -9,7 +9,15 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        sans: [
+          "Meiryo",
+          "Hiragino Kaku Gothic ProN",
+          "Hiragino Sans",
+          "Yu Gothic",
+          "YuGothic",
+          "MS PGothic",
+          "sans-serif",
+        ],
       },
       colors: {
         primary: {

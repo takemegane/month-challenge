@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { existsSync } from "fs";
 import { join } from "path";
 import { getIcon, hasIcons } from "../../../../lib/icon-storage";
+import { withNoStore } from "../../../../lib/http-cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,9 +12,9 @@ export async function GET(request: NextRequest) {
     if (existsSync(uploadedIconPath)) {
       console.log("Using filesystem icon");
       return NextResponse.json({
-        iconUrl: "/icons/icon-192.png",
+        iconUrl: `/icons/icon-192.png?v=${Date.now()}`,
         type: "uploaded-fs"
-      });
+      }, { headers: withNoStore() });
     }
 
     // Check persistent storage
@@ -22,9 +23,9 @@ export async function GET(request: NextRequest) {
     if (hasStoredIcons && storedIcon) {
       console.log("Using persistent storage icon");
       return NextResponse.json({
-        iconUrl: "/api/icon/icon-192",
+        iconUrl: `/api/icon/icon-192?v=${Date.now()}`,
         type: "uploaded-persistent"
-      });
+      }, { headers: withNoStore() });
     }
 
     // Then check if we have uploaded icons in memory
@@ -33,9 +34,9 @@ export async function GET(request: NextRequest) {
     if (uploadedIcons && uploadedIcons['icon-192']) {
       console.log("Using memory icon");
       return NextResponse.json({
-        iconUrl: "/api/icon/pwa-icon-192",
+        iconUrl: `/api/icon/pwa-icon-192?v=${Date.now()}`,
         type: "uploaded-memory"
-      });
+      }, { headers: withNoStore() });
     }
 
     // Return default GitHub Raw URL icon
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       iconUrl: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg",
       type: "default"
-    });
+    }, { headers: withNoStore() });
 
   } catch (error) {
     console.error("Current icon API error:", error);
@@ -51,6 +52,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       iconUrl: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg",
       type: "default"
-    });
+    }, { headers: withNoStore() });
   }
 }
