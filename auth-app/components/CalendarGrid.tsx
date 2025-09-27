@@ -77,13 +77,21 @@ export function CalendarGrid({ month, today = getJstTodayDate(), marked, onChang
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-xl sm:text-2xl">{new Date(iso).getDate()}</span>
                 {isToday && (todayStatus === "exists" || todayStatus === "created") ? (
-                  <span className="mt-0 sm:mt-0.5 text-base sm:text-2xl font-semibold text-orange-900 leading-none">済</span>
+                  <img
+                    src="/api/icon/icon-192"
+                    alt="完了"
+                    className="mt-0 sm:mt-0.5 w-4 h-4 sm:w-8 sm:h-8 rounded"
+                  />
                 ) : isToday && todayStatus === "loading" ? (
                   <span className="mt-0 sm:mt-0.5 text-base sm:text-2xl font-semibold text-orange-900 leading-none">…</span>
                 ) : isMarked ? (
-                  <span className="mt-0 sm:mt-0.5 text-base sm:text-2xl font-semibold text-orange-900 leading-none">済</span>
+                  <img
+                    src="/api/icon/icon-192"
+                    alt="完了"
+                    className="mt-0 sm:mt-0.5 w-4 h-4 sm:w-8 sm:h-8 rounded"
+                  />
                 ) : (
-                  <span className="mt-0 sm:mt-0.5 text-base sm:text-2xl font-semibold leading-none opacity-0">済</span>
+                  <div className="mt-0 sm:mt-0.5 w-4 h-4 sm:w-8 sm:h-8"></div>
                 )}
               </div>
             </button>
