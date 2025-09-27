@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
         headers: {
           'Content-Type': 'image/png',
           'Cache-Control': 'public, max-age=3600',
-          'ETag': `"uploaded-${Date.now()}"`,
+          'ETag': '"uploaded-icon-192"',
         },
       });
     }
