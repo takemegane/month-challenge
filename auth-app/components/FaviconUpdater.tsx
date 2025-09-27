@@ -6,6 +6,9 @@ export default function FaviconUpdater() {
   useEffect(() => {
     const updateFavicon = async () => {
       try {
+        // Ensure we're in the browser
+        if (typeof window === 'undefined' || !document.head) return;
+
         // Get current icon URL
         const response = await fetch('/api/icon/current');
         const data = await response.json();
@@ -16,9 +19,13 @@ export default function FaviconUpdater() {
             ? `${data.iconUrl}&t=${Date.now()}`
             : `${data.iconUrl}?t=${Date.now()}`;
 
-          // Remove existing favicon links
+          // Remove existing favicon links safely
           const existingFavicons = document.querySelectorAll("link[rel*='icon']");
-          existingFavicons.forEach(favicon => favicon.remove());
+          existingFavicons.forEach(favicon => {
+            if (favicon.parentNode) {
+              favicon.parentNode.removeChild(favicon);
+            }
+          });
 
           // Create new favicon link with cache busting
           const link = document.createElement('link');
@@ -43,17 +50,21 @@ export default function FaviconUpdater() {
 
     updateFavicon();
 
-    // Listen for custom favicon update events
-    const handleFaviconUpdate = () => {
-      console.log('Favicon update event received');
-      setTimeout(updateFavicon, 100); // Small delay to ensure icon is ready
-    };
+    // Listen for custom favicon update events (only in browser)
+    if (typeof window !== 'undefined') {
+      const handleFaviconUpdate = () => {
+        console.log('Favicon update event received');
+        setTimeout(updateFavicon, 100); // Small delay to ensure icon is ready
+      };
 
-    window.addEventListener('faviconUpdate', handleFaviconUpdate);
+      window.addEventListener('faviconUpdate', handleFaviconUpdate);
 
-    return () => {
-      window.removeEventListener('faviconUpdate', handleFaviconUpdate);
-    };
+      return () => {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('faviconUpdate', handleFaviconUpdate);
+        }
+      };
+    }
   }, []);
 
   return null; // This component doesn't render anything
