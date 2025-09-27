@@ -25,7 +25,7 @@ export const swrConfig: SWRConfiguration = {
   dedupingInterval: 30000,
   focusThrottleInterval: 5000,
   // Revalidate when user comes back to the page
-  revalidateOnFocus: true,
+  revalidateOnFocus: false,
   revalidateOnReconnect: true,
   // Retry on error with exponential backoff
   errorRetryCount: 3,

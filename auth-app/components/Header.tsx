@@ -59,32 +59,32 @@ export default function Header() {
           <Link href="/calendar" className="font-semibold tracking-tight text-2xl text-orange-800">月チャレ</Link>
           <div className="flex items-center gap-4">
             <nav className="flex flex-wrap gap-3">
-              <Link
-                href={currentMonthPath}
-                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
+              <button
+                onClick={() => window.location.href = currentMonthPath}
+                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base cursor-pointer"
               >
                 今月のカレンダー
-              </Link>
-              <Link
-                href="/list"
-                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
+              </button>
+              <button
+                onClick={() => window.location.href = "/list"}
+                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base cursor-pointer"
               >
                 一覧
-              </Link>
+              </button>
               {user.is_admin && (
                 <>
-                  <Link
-                    href="/admin"
-                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
+                  <button
+                    onClick={() => window.location.href = "/admin"}
+                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base cursor-pointer"
                   >
                     ユーザー設定
-                  </Link>
-                  <Link
-                    href="/admin/overview"
-                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
+                  </button>
+                  <button
+                    onClick={() => window.location.href = "/admin/overview"}
+                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base cursor-pointer"
                   >
                     チェック管理
-                  </Link>
+                  </button>
                 </>
               )}
             </nav>
@@ -128,32 +128,32 @@ export default function Header() {
 
           {/* Bottom row: Navigation buttons */}
           <nav className="grid grid-cols-2 gap-2">
-            <Link
-              href={currentMonthPath}
-              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
+            <button
+              onClick={() => window.location.href = currentMonthPath}
+              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm cursor-pointer"
             >
               今月のカレンダー
-            </Link>
-            <Link
-              href="/list"
-              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
+            </button>
+            <button
+              onClick={() => window.location.href = "/list"}
+              className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm cursor-pointer"
             >
               一覧
-            </Link>
+            </button>
             {user.is_admin && (
               <>
-                <Link
-                  href="/admin"
-                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
+                <button
+                  onClick={() => window.location.href = "/admin"}
+                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm cursor-pointer"
                 >
                   ユーザー設定
-                </Link>
-                <Link
-                  href="/admin/overview"
-                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
+                </button>
+                <button
+                  onClick={() => window.location.href = "/admin/overview"}
+                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm cursor-pointer"
                 >
                   チェック管理
-                </Link>
+                </button>
               </>
             )}
           </nav>
