@@ -88,11 +88,16 @@ export async function POST(request: NextRequest) {
           // Store in persistent storage
           const base64 = processedBuffer.toString('base64');
           iconData[`icon-${size}`] = base64;
-          await setIcon(size.toString(), base64);
-          console.log(`Successfully stored icon-${size} in persistent storage (${base64.length} chars)`);
+
+          try {
+            await setIcon(size.toString(), base64);
+            console.log(`Successfully stored icon-${size} in persistent storage (${base64.length} chars)`);
+          } catch (storageError) {
+            console.log(`Failed to store icon-${size} in Redis, using memory fallback:`, storageError);
+          }
 
           generatedIcons.push({
-            src: `/api/icon/pwa-icon-${size}`,
+            src: `/api/icon/icon-${size}`,
             sizes: `${size}x${size}`,
             type: "image/png",
             purpose: "maskable any"

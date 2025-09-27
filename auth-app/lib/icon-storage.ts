@@ -16,10 +16,14 @@ function getRedisClient() {
       const port = url.port;
       const password = url.password;
 
-      // Create Redis client with URL format for Upstash
+      // Create Redis client with URL format for Upstash and shorter timeout
       redis = new Redis({
         url: `https://${host}`,
-        token: password
+        token: password,
+        retry: {
+          retries: 1,
+          backoff: () => 500
+        }
       });
       console.log('Redis client initialized successfully');
     } catch (error) {
@@ -33,11 +37,17 @@ export async function setIcon(size: string, base64Data: string) {
   const key = `icon-${size}`;
   iconCache[key] = base64Data;
 
-  // Store in Redis for production persistence
+  // Store in Redis for production persistence with timeout
   const redisClient = getRedisClient();
   if (redisClient) {
     try {
-      await redisClient.set(`pwa-icons:${key}`, base64Data);
+      // Add timeout to Redis operation
+      await Promise.race([
+        redisClient.set(`pwa-icons:${key}`, base64Data),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Redis timeout')), 2000)
+        )
+      ]);
       console.log(`Icon ${size} cached to Redis for persistence`);
     } catch (error) {
       console.log('Failed to cache icon to Redis:', error);
