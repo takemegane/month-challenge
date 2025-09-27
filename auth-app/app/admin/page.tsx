@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [profileOriginal, setProfileOriginal] = useState<User | null>(null);
   const [iconUploadMsg, setIconUploadMsg] = useState<string | null>(null);
   const [iconUploading, setIconUploading] = useState(false);
+  const [iconCacheKey, setIconCacheKey] = useState(Date.now());
 
   // Check admin authorization based on current user
   const isAuthorized = currentUser?.is_admin || false;
@@ -220,13 +221,15 @@ export default function AdminPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setIconUploadMsg("アイコンを更新しました。ページをリロードしてください。");
+        setIconUploadMsg("アイコンを更新しました。");
         // Reset form
         (e.target as HTMLFormElement).reset();
-        // Refresh icon after a short delay
+        // Update icon cache key to force refresh of sample icons
+        setIconCacheKey(Date.now());
+        // Refresh page after showing updated sample icons
         setTimeout(() => {
           window.location.reload();
-        }, 1500);
+        }, 2000);
       } else {
         if (data.error === "unauthorized") {
           setIconUploadMsg("管理者権限が必要です");
@@ -303,6 +306,30 @@ export default function AdminPage() {
           トップのアイコンを設定できます。
           PNG、JPEG、WebP形式の画像をアップロードしてください。
         </p>
+
+        {/* 現在のアイコン表示 */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-700">現在のアイコン</h3>
+          <div className="flex flex-wrap gap-2">
+            {[72, 152, 192].map((size) => (
+              <div key={size} className="text-center">
+                <img
+                  src={`/api/icon/icon-${size}?t=${iconCacheKey}`}
+                  alt={`Icon ${size}x${size}`}
+                  className="w-12 h-12 rounded-lg border border-gray-200 shadow-sm"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+                <div className="text-xs text-gray-500 mt-1">{size}px</div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">
+            複数サイズのアイコンが自動生成されます
+          </p>
+        </div>
 
         <form onSubmit={uploadPWAIcon} className="space-y-3">
           <div>
