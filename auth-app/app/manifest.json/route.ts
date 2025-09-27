@@ -20,7 +20,7 @@ export async function GET() {
   };
 
   // Check if we have uploaded icons
-  if (hasIcons()) {
+  if (await hasIcons()) {
     // Use uploaded icons
     const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
     baseManifest.icons = iconSizes.map(size => ({

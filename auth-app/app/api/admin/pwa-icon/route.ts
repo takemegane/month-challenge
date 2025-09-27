@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
           // Store in persistent storage
           const base64 = processedBuffer.toString('base64');
           iconData[`icon-${size}`] = base64;
-          setIcon(size.toString(), base64);
+          await setIcon(size.toString(), base64);
           console.log(`Successfully stored icon-${size} in persistent storage (${base64.length} chars)`);
 
           generatedIcons.push({

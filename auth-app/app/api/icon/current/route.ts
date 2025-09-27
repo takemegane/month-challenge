@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Check persistent storage
-    if (hasIcons() && getIcon('192')) {
+    const hasStoredIcons = await hasIcons();
+    const storedIcon = await getIcon('192');
+    if (hasStoredIcons && storedIcon) {
       console.log("Using persistent storage icon");
       return NextResponse.json({
         iconUrl: "/api/icon/icon-192",

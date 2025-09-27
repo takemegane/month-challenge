@@ -4,7 +4,7 @@ import { getIcon } from "../../../../lib/icon-storage";
 export async function GET(request: NextRequest) {
   try {
     // First check persistent storage
-    const iconData = getIcon('192');
+    const iconData = await getIcon('192');
     if (iconData) {
       const buffer = Buffer.from(iconData, 'base64');
 

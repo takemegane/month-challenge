@@ -1,51 +1,122 @@
-// Simple icon storage using environment/file-based approach
-// This provides persistence across server restarts in both dev and production
+// Redis-based icon storage for production persistence
+import { Redis } from '@upstash/redis'
 
+// In-memory cache for performance
 let iconCache: Record<string, string> = {};
 
-export function setIcon(size: string, base64Data: string) {
-  iconCache[`icon-${size}`] = base64Data;
+// Redis client initialization
+let redis: Redis | null = null;
 
-  // Write to file for persistence across server restarts
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const cacheFile = path.join(process.cwd(), '.icon-cache.json');
-    fs.writeFileSync(cacheFile, JSON.stringify(iconCache, null, 2));
-    console.log('Icons cached to file for persistence');
-  } catch (error) {
-    console.log('Failed to write icon cache file:', error);
+function getRedisClient() {
+  if (!redis && process.env.REDIS_URL) {
+    try {
+      // Parse Redis URL to extract credentials
+      const url = new URL(process.env.REDIS_URL);
+      const host = url.hostname;
+      const port = url.port;
+      const password = url.password;
+
+      // Create Redis client with URL format for Upstash
+      redis = new Redis({
+        url: `https://${host}`,
+        token: password
+      });
+      console.log('Redis client initialized successfully');
+    } catch (error) {
+      console.log('Redis initialization failed:', error);
+    }
+  }
+  return redis;
+}
+
+export async function setIcon(size: string, base64Data: string) {
+  const key = `icon-${size}`;
+  iconCache[key] = base64Data;
+
+  // Store in Redis for production persistence
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    try {
+      await redisClient.set(`pwa-icons:${key}`, base64Data);
+      console.log(`Icon ${size} cached to Redis for persistence`);
+    } catch (error) {
+      console.log('Failed to cache icon to Redis:', error);
+    }
+  }
+
+  // Fallback to file system for local development
+  if (!redisClient) {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const cacheFile = path.join(process.cwd(), '.icon-cache.json');
+      const fileCache = { ...iconCache };
+      fs.writeFileSync(cacheFile, JSON.stringify(fileCache, null, 2));
+      console.log('Icons cached to file for local development');
+    } catch (error) {
+      console.log('Failed to write icon cache file:', error);
+    }
   }
 }
 
-export function getIcon(size: string): string | null {
+export async function getIcon(size: string): Promise<string | null> {
+  const key = `icon-${size}`;
+
   // First check memory cache
-  if (iconCache[`icon-${size}`]) {
-    return iconCache[`icon-${size}`];
+  if (iconCache[key]) {
+    return iconCache[key];
   }
 
-  // Try to load from file cache for persistence across server restarts
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const cacheFile = path.join(process.cwd(), '.icon-cache.json');
-    if (fs.existsSync(cacheFile)) {
-      const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-      iconCache = { ...iconCache, ...cached };
-      return iconCache[`icon-${size}`] || null;
+  // Try Redis for production persistence
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    try {
+      const cached = await redisClient.get(`pwa-icons:${key}`);
+      if (cached && typeof cached === 'string') {
+        iconCache[key] = cached;
+        return cached;
+      }
+    } catch (error) {
+      console.log('Failed to read from Redis:', error);
     }
-  } catch (error) {
-    console.log('Failed to read icon cache file:', error);
+  }
+
+  // Fallback to file cache for local development
+  if (!redisClient) {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const cacheFile = path.join(process.cwd(), '.icon-cache.json');
+      if (fs.existsSync(cacheFile)) {
+        const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+        iconCache = { ...iconCache, ...cached };
+        return iconCache[key] || null;
+      }
+    } catch (error) {
+      console.log('Failed to read icon cache file:', error);
+    }
   }
 
   return null;
 }
 
-export function hasIcons(): boolean {
-  return Object.keys(iconCache).length > 0 || checkCacheFile();
-}
+export async function hasIcons(): Promise<boolean> {
+  if (Object.keys(iconCache).length > 0) {
+    return true;
+  }
 
-function checkCacheFile(): boolean {
+  // Check Redis for icons
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    try {
+      const keys = await redisClient.keys('pwa-icons:icon-*');
+      return keys.length > 0;
+    } catch (error) {
+      console.log('Failed to check Redis keys:', error);
+    }
+  }
+
+  // Fallback to file cache check
   try {
     const fs = require('fs');
     const path = require('path');
@@ -56,9 +127,24 @@ function checkCacheFile(): boolean {
   }
 }
 
-export function clearIcons() {
+export async function clearIcons() {
   iconCache = {};
 
+  // Clear Redis cache
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    try {
+      const keys = await redisClient.keys('pwa-icons:icon-*');
+      if (keys.length > 0) {
+        await redisClient.del(...keys);
+        console.log('Cleared icon cache from Redis');
+      }
+    } catch (error) {
+      console.log('Failed to clear Redis cache:', error);
+    }
+  }
+
+  // Clear file cache
   try {
     const fs = require('fs');
     const path = require('path');
