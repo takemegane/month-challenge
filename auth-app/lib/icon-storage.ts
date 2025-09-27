@@ -77,11 +77,16 @@ export async function getIcon(size: string): Promise<string | null> {
     return iconCache[key];
   }
 
-  // Try Redis for production persistence
+  // Try Redis for production persistence with timeout
   const redisClient = getRedisClient();
   if (redisClient) {
     try {
-      const cached = await redisClient.get(`pwa-icons:${key}`);
+      const cached = await Promise.race([
+        redisClient.get(`pwa-icons:${key}`),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Redis timeout')), 2000)
+        )
+      ]);
       if (cached && typeof cached === 'string') {
         iconCache[key] = cached;
         return cached;
@@ -115,12 +120,17 @@ export async function hasIcons(): Promise<boolean> {
     return true;
   }
 
-  // Check Redis for icons
+  // Check Redis for icons with timeout
   const redisClient = getRedisClient();
   if (redisClient) {
     try {
-      const keys = await redisClient.keys('pwa-icons:icon-*');
-      return keys.length > 0;
+      const keys = await Promise.race([
+        redisClient.keys('pwa-icons:icon-*'),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Redis timeout')), 2000)
+        )
+      ]);
+      return (keys as string[]).length > 0;
     } catch (error) {
       console.log('Failed to check Redis keys:', error);
     }
