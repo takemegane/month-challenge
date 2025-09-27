@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useUser, useOverview, useCheckOperation, prefetchOverviewRange } from "../../../hooks/use-api";
+import { useUser, useUsersList, useDailyStats, useUserRanking, useCheckOperation } from "../../../hooks/use-api";
 
 function formatMonthLabel(month: string) {
   const [year, m] = month.split("-");
@@ -31,17 +31,20 @@ type OverviewUser = {
   dates: string[];
 };
 
-type OverviewResponse = {
-  month: string;
-  range: { start: string; end: string };
-  users: OverviewUser[];
-  daily: Array<{ date: string; count: number }>;
-};
-
 export default function AdminOverviewPage() {
   const { user: currentUser, isLoading: userLoading } = useUser();
   const [month, setMonth] = useState<string>(getCurrentMonth());
-  const { overview, isLoading: overviewLoading, isValidating, isError: overviewError } = useOverview(month);
+  const [showRanking, setShowRanking] = useState(false);
+
+  // 軽量なユーザーリスト（チェック操作用）
+  const { users: usersList, isLoading: usersListLoading } = useUsersList();
+
+  // 日別チェック状況
+  const { data: dailyData, isLoading: dailyLoading, isValidating: dailyValidating, isError: dailyError } = useDailyStats(month);
+
+  // ユーザー別ランキング（オンデマンド）
+  const { data: rankingData, isLoading: rankingLoading, isValidating: rankingValidating, isError: rankingError } = useUserRanking(showRanking ? month : null);
+
   const { performCheck, isUpdating, error: checkError } = useCheckOperation();
   const [editUser, setEditUser] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
@@ -50,27 +53,22 @@ export default function AdminOverviewPage() {
   // Check admin authorization based on current user
   const isAuthorized = currentUser?.is_admin || false;
   const authLoading = userLoading;
-  const showSkeleton = overviewLoading && !overview;
-  const isRefreshing = isValidating && !!overview;
-  const error = overviewError ? "データの取得に失敗しました" : null;
-  const data = overview as OverviewResponse | undefined;
 
-  const days = useMemo(() => data?.daily.map((d: { date: string; count: number }) => d.date) ?? [], [data]);
-
+  const days = useMemo(() => dailyData?.days || [], [dailyData]);
   const sortedUsers = useMemo(() => {
-    return [...(data?.users || [])].sort((a, b) => a.name.localeCompare(b.name));
-  }, [data?.users]);
+    return [...(dailyData?.users || [])].sort((a, b) => a.name.localeCompare(b.name));
+  }, [dailyData?.users]);
 
   // Reset selection if the chosen user no longer exists
   useEffect(() => {
     if (!editUser) return;
-    if (data?.users?.some((u: OverviewUser) => u.id === editUser)) return;
+    if (usersList?.some((u) => u.id === editUser)) return;
     setEditUser("");
-  }, [data?.users, editUser]);
+  }, [usersList, editUser]);
 
-  // Advanced prefetch strategy: preload adjacent and nearby months for admin overview
+  // Reset ranking display when month changes
   useEffect(() => {
-    prefetchOverviewRange(month);
+    setShowRanking(false);
   }, [month]);
 
   const handleDownloadCsv = async () => {
@@ -186,245 +184,239 @@ export default function AdminOverviewPage() {
         </button>
       </div>
 
-
-      {showSkeleton && (
-        <>
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-orange-900/90">ユーザー別件数</h2>
-              <div className="text-sm text-orange-900/70">上位20名を表示</div>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
-              {isRefreshing && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
-              )}
-              <table className="min-w-full divide-y divide-orange-200 text-sm">
-                <tbody className="divide-y divide-orange-100">
-                  {SKELETON_USERS.map((key) => (
-                    <tr key={`skeleton-user-${key}`} className="animate-pulse text-orange-900/60">
-                      <td className="px-4 py-3">
-                        <div className="h-4 w-32 rounded bg-orange-100" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="h-4 w-48 rounded bg-orange-100" />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="ml-auto h-4 w-10 rounded bg-orange-100" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="h-2 rounded bg-orange-100" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
-            <div className="h-4 w-32 rounded bg-orange-100 animate-pulse" />
-            <div className="space-y-3">
-              <div className="h-4 w-24 rounded bg-orange-100 animate-pulse" />
-              <div className="h-10 rounded bg-orange-100 animate-pulse" />
-              <div className="h-4 w-24 rounded bg-orange-100 animate-pulse" />
-              <div className="h-10 rounded bg-orange-100 animate-pulse" />
-              <div className="flex gap-2">
-                <div className="h-10 flex-1 rounded bg-green-100 animate-pulse" />
-                <div className="h-10 flex-1 rounded bg-red-100 animate-pulse" />
-              </div>
-            </div>
+      {/* チェック操作パネル（即座に表示） */}
+      <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
+        <h2 className="font-medium">チェック操作</h2>
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">ユーザー</label>
+          <select
+            value={editUser}
+            onChange={(e) => setEditUser(e.target.value)}
+            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
+            disabled={usersListLoading}
+          >
+            <option value="">
+              {usersListLoading ? "読み込み中..." : "選択してください"}
+            </option>
+            {usersList.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+            ))}
+          </select>
+          <label className="block text-sm font-medium text-gray-700">日付</label>
+          <input
+            type="date"
+            value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleCheck('add')}
+              className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+              disabled={isUpdating}
+            >
+              チェックを付ける
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCheck('remove')}
+              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+              disabled={isUpdating}
+            >
+              チェックを外す
+            </button>
           </div>
+          {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}
+        </div>
+      </div>
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-orange-900/90">日別チェック状況</h2>
-              <div className="text-sm text-orange-900/70">6行表示・縦スクロール対応</div>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
-              {isRefreshing && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
-              )}
-              <div className="max-h-[12rem] overflow-y-auto overflow-x-auto">
-                <table className="min-w-full border-separate border-spacing-0 text-xs">
-                  <tbody>
-                    {SKELETON_USERS.map((key) => (
-                      <tr key={`skeleton-daily-${key}`} className="animate-pulse text-orange-900/60">
-                        <td className="px-3 py-2 min-w-[120px]">
-                          <div className="h-4 w-32 rounded bg-orange-100" />
-                        </td>
-                        <td className="px-3 py-2 min-w-[60px]">
-                          <div className="h-4 w-10 rounded bg-orange-100" />
-                        </td>
-                        {SKELETON_DAYS.map((day) => (
-                          <td key={`skeleton-daily-${key}-${day}`} className="px-2 py-1 min-w-[40px]">
-                            <div className="h-5 w-5 rounded-full bg-orange-100" />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-
-      {!showSkeleton && error && !data && (
+      {/* 日別チェック状況（段階的読み込み） */}
+      {!dailyLoading && dailyError && !dailyData && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
-          データを取得できませんでした: {error}
+          データを取得できませんでした
         </div>
       )}
 
-      {data && !showSkeleton && (
+      {(dailyLoading || dailyData) && (
         <>
-          {error && (
+          {dailyError && dailyData && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
               最新データの取得に失敗しました。表示中の情報はキャッシュです。
             </div>
           )}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-orange-900/90">ユーザー別件数</h2>
-              <div className="text-sm text-orange-900/70">上位20名を表示</div>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
-              {isRefreshing && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
-              )}
-              <table className="min-w-full divide-y divide-orange-200 text-sm">
-                <thead className="bg-orange-50 text-orange-900/80">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">ユーザー</th>
-                    <th className="px-4 py-2 text-left font-medium">メール</th>
-                    <th className="px-4 py-2 text-right font-medium">チェック数</th>
-                    <th className="px-4 py-2 text-left font-medium">進捗</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-orange-100">
-                  {data.users.slice(0, 20).map((user: OverviewUser) => {
-                    const totalDays = days.length || 1;
-                    const rate = Math.round((user.total / totalDays) * 100);
-                    return (
-                      <tr key={user.id} className="text-orange-900/90">
-                        <td className="px-4 py-2 font-medium">{user.name}</td>
-                        <td className="px-4 py-2 text-orange-900/70">{user.email}</td>
-                        <td className="px-4 py-2 text-right">{user.total}</td>
-                        <td className="px-4 py-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 flex-1 rounded-full bg-orange-100">
-                              <div
-                                className="h-2 rounded-full bg-orange-500"
-                                style={{ width: `${Math.min(rate, 100)}%` }}
-                              />
-                            </div>
-                            <span className="min-w-[3.5rem] text-sm text-orange-900/70">{rate}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {data.users.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-6 text-center text-orange-900/60">
-                        この月のチェックはまだありません。
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <div className="rounded-lg border border-orange-200/70 bg-white p-4 max-w-2xl space-y-3">
-            <h2 className="font-medium">チェック操作</h2>
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">ユーザー</label>
-              <select
-                value={editUser}
-                onChange={(e) => setEditUser(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
-              >
-                <option value="">選択してください</option>
-                {sortedUsers.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                ))}
-              </select>
-              <label className="block text-sm font-medium text-gray-700">日付</label>
-              <input
-                type="date"
-                value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleCheck('add')}
-                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
-                >
-                  チェックを付ける
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCheck('remove')}
-                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
-                >
-                  チェックを外す
-                </button>
-              </div>
-              {editMsg && <div className="text-sm text-orange-900/80 p-2 bg-orange-50 rounded">{editMsg}</div>}
-            </div>
-          </div>
-
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-orange-900/90">日別チェック状況</h2>
-              <div className="text-sm text-orange-900/70">6行表示・縦スクロール対応</div>
+              <div className="text-sm text-orange-900/70">7行表示・縦スクロール対応</div>
             </div>
             <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
-              {isRefreshing && (
+              {dailyValidating && dailyData && (
                 <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
               )}
-              <div className="max-h-[12rem] overflow-y-auto overflow-x-auto">
+              <div className="max-h-[14rem] overflow-y-auto overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-0 text-xs">
-                  <thead className="sticky top-0 bg-orange-50 z-10">
-                    <tr>
-                      <th className="sticky left-0 z-20 bg-orange-50 px-3 py-2 text-left font-medium text-orange-900/80 border-r border-orange-200 min-w-[120px]">ユーザー</th>
-                      <th className="px-3 py-2 text-right font-medium text-orange-900/80 border-r border-orange-200 min-w-[60px]">件数</th>
-                      {days.map((day: string) => (
-                        <th key={day} className="px-2 py-2 font-medium text-orange-900/70 min-w-[40px]">
-                          {Number(day.slice(-2))}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedUsers.map((user: OverviewUser) => {
-                      const marked = new Set(user.dates);
-                      return (
-                        <tr key={`detail-${user.id}`} className="hover:bg-orange-50/50">
-                          <td className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-orange-900/90 border-r border-orange-200 min-w-[120px]">
-                            {user.name}
+                  {dailyLoading && !dailyData ? (
+                    <tbody>
+                      {SKELETON_USERS.map((key) => (
+                        <tr key={`skeleton-daily-${key}`} className="animate-pulse text-orange-900/60">
+                          <td className="px-3 py-2 min-w-[120px]">
+                            <div className="h-4 w-32 rounded bg-orange-100" />
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold text-orange-900/80 border-r border-orange-200 min-w-[60px]">
-                            {user.total}
+                          <td className="px-3 py-2 min-w-[60px]">
+                            <div className="h-4 w-10 rounded bg-orange-100" />
                           </td>
-                          {days.map((day: string) => (
-                            <td key={`${user.id}-${day}`} className="px-2 py-1 min-w-[40px]">
-                              <div
-                                className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
-                                aria-label={marked.has(day) ? "チェック済" : "未チェック"}
-                              />
+                          {SKELETON_DAYS.map((day) => (
+                            <td key={`skeleton-daily-${key}-${day}`} className="px-2 py-1 min-w-[40px]">
+                              <div className="h-5 w-5 rounded-full bg-orange-100" />
                             </td>
                           ))}
                         </tr>
-                      );
-                    })}
-                  </tbody>
+                      ))}
+                    </tbody>
+                  ) : (
+                    <>
+                      <thead className="sticky top-0 bg-orange-50 z-10">
+                        <tr>
+                          <th className="sticky left-0 z-20 bg-orange-50 px-3 py-2 text-left font-medium text-orange-900/80 border-r border-orange-200 min-w-[120px]">ユーザー</th>
+                          <th className="px-3 py-2 text-right font-medium text-orange-900/80 border-r border-orange-200 min-w-[60px]">件数</th>
+                          {days.map((day: string) => (
+                            <th key={day} className="px-2 py-2 font-medium text-orange-900/70 min-w-[40px]">
+                              {Number(day.slice(-2))}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedUsers.map((user: OverviewUser) => {
+                          const marked = new Set(user.dates);
+                          return (
+                            <tr key={`detail-${user.id}`} className="hover:bg-orange-50/50">
+                              <td className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-orange-900/90 border-r border-orange-200 min-w-[120px]">
+                                {user.name}
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold text-orange-900/80 border-r border-orange-200 min-w-[60px]">
+                                {user.total}
+                              </td>
+                              {days.map((day: string) => (
+                                <td key={`${user.id}-${day}`} className="px-2 py-1 min-w-[40px]">
+                                  <div
+                                    className={`h-5 w-5 rounded-full border ${marked.has(day) ? "border-orange-400 bg-orange-400" : "border-orange-200 bg-white"}`}
+                                    aria-label={marked.has(day) ? "チェック済" : "未チェック"}
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  )}
                 </table>
               </div>
             </div>
+          </section>
+
+          {/* ユーザー別件数（オンデマンド） */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-orange-900/90">ユーザー別件数</h2>
+              <div className="text-sm text-orange-900/70">全ユーザー表示</div>
+            </div>
+
+            {!showRanking ? (
+              <div className="text-center py-8">
+                <button
+                  onClick={() => setShowRanking(true)}
+                  className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium shadow"
+                >
+                  集計表示
+                </button>
+              </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-white/80 shadow-sm">
+                {rankingValidating && (
+                  <div className="absolute inset-0 bg-white/70 backdrop-blur-sm animate-pulse pointer-events-none" aria-hidden="true" />
+                )}
+
+                {rankingLoading && !rankingData ? (
+                  <div className="p-8 text-center text-orange-900/70">
+                    集計中です...
+                  </div>
+                ) : rankingError ? (
+                  <div className="p-8 text-center text-red-700">
+                    集計データの取得に失敗しました
+                  </div>
+                ) : (
+                  <div className="max-h-[20rem] overflow-y-auto">
+                    <table className="min-w-full divide-y divide-orange-200 text-sm">
+                    <thead className="sticky top-0 bg-orange-50 text-orange-900/80 z-10">
+                      <tr>
+                        <th className="px-3 py-2 text-center font-medium w-12">順位</th>
+                        <th className="px-4 py-2 text-left font-medium">ユーザー</th>
+                        <th className="px-4 py-2 text-left font-medium">メール</th>
+                        <th className="px-4 py-2 text-right font-medium">チェック数</th>
+                        <th className="px-4 py-2 text-left font-medium">進捗</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-orange-100">
+                      {rankingData?.users.map((user: OverviewUser, index: number) => {
+                        const totalDays = rankingData.days.length || 1;
+                        const rate = Math.round((user.total / totalDays) * 100);
+
+                        // Calculate ranking with ties
+                        let rank = 1;
+                        let sameRankCount = 0;
+
+                        for (let i = 0; i < index; i++) {
+                          if (rankingData.users[i].total > user.total) {
+                            rank++;
+                          } else if (rankingData.users[i].total === user.total) {
+                            sameRankCount++;
+                          }
+                        }
+
+                        if (sameRankCount > 0) {
+                          for (let i = 0; i < index; i++) {
+                            if (rankingData.users[i].total === user.total) {
+                              let firstRank = 1;
+                              for (let j = 0; j < i; j++) {
+                                if (rankingData.users[j].total > user.total) {
+                                  firstRank++;
+                                }
+                              }
+                              rank = firstRank;
+                              break;
+                            }
+                          }
+                        }
+
+                        return (
+                          <tr key={user.id} className="text-orange-900/90">
+                            <td className="px-3 py-2 text-center font-semibold text-orange-800 w-12">{rank}</td>
+                            <td className="px-4 py-2 font-medium">{user.name}</td>
+                            <td className="px-4 py-2 text-orange-900/70">{user.email}</td>
+                            <td className="px-4 py-2 text-right">{user.total}</td>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 flex-1 rounded-full bg-orange-100">
+                                  <div
+                                    className="h-2 rounded-full bg-orange-500"
+                                    style={{ width: `${Math.min(rate, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-orange-900/70 min-w-[2.5rem]">{rate}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         </>
       )}

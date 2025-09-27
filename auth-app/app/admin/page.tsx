@@ -620,19 +620,20 @@ export default function AdminPage() {
             </button>
           )}
         </div>
-        <div className="space-y-2">
-          {usersLoading ? (
-            <div className="text-gray-500 py-4 text-center">
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+        <div className="max-h-96 overflow-y-auto border border-orange-100 rounded-lg">
+          <div className="space-y-2 p-2">
+            {usersLoading ? (
+              <div className="text-gray-500 py-4 text-center">
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+                </div>
               </div>
-            </div>
-          ) : users.length === 0 ? (
-            <p className="text-gray-500 py-4 text-center">ユーザーが登録されていません</p>
-          ) : (
-            users.map((u) => (
+            ) : users.length === 0 ? (
+              <p className="text-gray-500 py-4 text-center">ユーザーが登録されていません</p>
+            ) : (
+              users.map((u) => (
               <div key={u.id} className="flex items-center justify-between gap-3 border-b border-orange-200/60 py-2">
                 <div className="flex items-center gap-2">
                   <div>
@@ -684,8 +685,9 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

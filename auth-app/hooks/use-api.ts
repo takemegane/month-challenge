@@ -182,6 +182,43 @@ export function useUsers() {
   };
 }
 
+// 軽量なユーザーリスト（チェック操作用）
+export function useUsersList() {
+  const { data, error, isLoading } = useSWR<{ users: User[] }>('/api/admin/users-list');
+
+  return {
+    users: data?.users || [],
+    isLoading,
+    isError: !!error,
+  };
+}
+
+// 日別チェック状況
+export function useDailyStats(month?: string) {
+  const url = month ? `/api/admin/daily-stats?month=${month}` : '/api/admin/daily-stats';
+  const { data, error, isLoading, isValidating } = useSWR(url);
+
+  return {
+    data,
+    isLoading,
+    isValidating,
+    isError: !!error,
+  };
+}
+
+// ユーザー別ランキング
+export function useUserRanking(month?: string) {
+  const url = month ? `/api/admin/user-ranking?month=${month}` : '/api/admin/user-ranking';
+  const { data, error, isLoading, isValidating } = useSWR(url);
+
+  return {
+    data,
+    isLoading,
+    isValidating,
+    isError: !!error,
+  };
+}
+
 export function useUpdateProfile() {
   const { mutate } = useSWRConfig();
 
