@@ -61,16 +61,12 @@ export default function Header() {
             <nav className="flex flex-wrap gap-3">
               <Link
                 href={currentMonthPath}
-                prefetch={true}
-                onMouseEnter={() => prefetchCalendar()}
                 className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 今月のカレンダー
               </Link>
               <Link
                 href="/list"
-                prefetch={true}
-                onMouseEnter={prefetchList}
                 className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-base"
               >
                 一覧
@@ -79,17 +75,13 @@ export default function Header() {
                 <>
                   <Link
                     href="/admin"
-                    prefetch={true}
-                    onMouseEnter={() => prefetchAdmin()}
                     className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     ユーザー設定
                   </Link>
                   <Link
                     href="/admin/overview"
-                    prefetch={true}
-                    onMouseEnter={() => prefetchOverview()}
-                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover-border-purple-300 text-base"
+                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-base"
                   >
                     チェック管理
                   </Link>
@@ -138,16 +130,12 @@ export default function Header() {
           <nav className="grid grid-cols-2 gap-2">
             <Link
               href={currentMonthPath}
-              prefetch={true}
-              onTouchStart={() => prefetchCalendar()}
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               今月のカレンダー
             </Link>
             <Link
               href="/list"
-              prefetch={true}
-              onTouchStart={prefetchList}
               className="flex-1 px-4 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium rounded-lg transition border border-orange-200 hover:border-orange-300 text-center text-sm"
             >
               一覧
@@ -156,17 +144,13 @@ export default function Header() {
               <>
                 <Link
                   href="/admin"
-                  prefetch={true}
-                  onTouchStart={() => prefetchAdmin()}
                   className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   ユーザー設定
                 </Link>
                 <Link
                   href="/admin/overview"
-                  prefetch={true}
-                  onTouchStart={() => prefetchOverview()}
-                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover-border-purple-300 text-center text-sm"
+                  className="flex-1 px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg transition border border-purple-200 hover:border-purple-300 text-center text-sm"
                 >
                   チェック管理
                 </Link>
