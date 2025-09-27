@@ -207,8 +207,8 @@ export function useDailyStats(month?: string) {
 }
 
 // ユーザー別ランキング
-export function useUserRanking(month?: string) {
-  const url = month ? `/api/admin/user-ranking?month=${month}` : '/api/admin/user-ranking';
+export function useUserRanking(month?: string | null) {
+  const url = month ? `/api/admin/user-ranking?month=${month}` : null;
   const { data, error, isLoading, isValidating } = useSWR(url);
 
   return {
