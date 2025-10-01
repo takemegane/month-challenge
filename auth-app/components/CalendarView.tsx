@@ -19,7 +19,8 @@ function addMonths(base: string, diff: number) {
 export function CalendarView({ initialMonth }: { initialMonth?: string }) {
   const router = useRouter();
   const today = getJstTodayDate();
-  const [month, setMonth] = useState<string>(initialMonth ? firstOfMonth(initialMonth) : firstOfMonth(today));
+  const currentMonth = firstOfMonth(today);
+  const [month, setMonth] = useState<string>(initialMonth ? firstOfMonth(initialMonth) : currentMonth);
   const monthLabel = useMemo(() => formatInTimeZone(new Date(month), "Asia/Tokyo", "yyyy年M月"), [month]);
   const thisMonth = firstOfMonth(today);
   const sixMonthsAgo = addMonths(thisMonth, -6);
@@ -50,10 +51,16 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
   }, [entries]);
 
   // Update month when initialMonth changes (e.g., when navigating from list)
+  // Also update to current month if the calendar is showing an old month and we're in a new month
   useEffect(() => {
-    if (initialMonth) setMonth(firstOfMonth(initialMonth));
+    if (initialMonth) {
+      setMonth(firstOfMonth(initialMonth));
+    } else if (month < currentMonth && !initialMonth) {
+      // Auto-advance to current month if we're showing an old month
+      setMonth(currentMonth);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMonth]);
+  }, [initialMonth, currentMonth]);
 
   // Advanced prefetch strategy: preload adjacent and nearby months
   useEffect(() => {

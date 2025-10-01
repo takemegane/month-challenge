@@ -19,8 +19,7 @@ export function CalendarGrid({ month, today = getJstTodayDate(), marked, onChang
 
   useEffect(() => {
     // Check if already recorded today using SWR data
-    const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    const iso = jst.toISOString().slice(0, 10);
+    const iso = getJstTodayDate();
     const hasToday = entries.some((e: any) => (e.entry_date as string).slice(0, 10) === iso);
     setTodayStatus(hasToday ? "exists" : "idle");
   }, [entries]);
