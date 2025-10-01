@@ -1,6 +1,11 @@
 export function getJstTodayDate() {
-  const jst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-  return jst.toISOString().slice(0, 10);
+  const now = new Date();
+  const jstOffset = 9 * 60; // JST is UTC+9
+  const jstTime = new Date(now.getTime() + jstOffset * 60 * 1000);
+  const year = jstTime.getUTCFullYear();
+  const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(jstTime.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function startOfMonthJst(base: string) {
