@@ -2,14 +2,15 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "../hooks/use-api";
+import { getJstTodayDate } from "../lib/date";
 
 export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
   const { user, isLoading } = useUser();
 
-  // Generate current month for calendar reset
-  const currentMonthPath = `/calendar?month=${new Date().toISOString().slice(0, 7)}`;
+  // Generate current month for calendar reset (JST-based)
+  const currentMonthPath = `/calendar?month=${getJstTodayDate().slice(0, 7)}`;
 
   const handleLogout = async () => {
     try {
