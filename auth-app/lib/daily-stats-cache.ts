@@ -75,10 +75,11 @@ export async function rebuildMonthlyCache(month?: string, deadlineMs?: number): 
       continue;
     }
 
-    const { count } = await query<{ count: number }>`
+    const rows = await query<{ count: number }>`
       select count(*)::int as count from auth_daily_stats_cache where month = ${target}
     `;
-    processedUsers += count ?? 0;
+    const count = rows[0]?.count ?? 0;
+    processedUsers += count;
   }
 
   return {
