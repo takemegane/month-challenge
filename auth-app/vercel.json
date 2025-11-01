@@ -10,10 +10,6 @@
     {
       "path": "/api/cron/sync",
       "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/admin/cache-worker?token=Summer2025Strong",
-      "schedule": "0 * * * *"
     }
   ]
 }
