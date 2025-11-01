@@ -10,20 +10,25 @@ export async function GET(req: Request) {
   // 実際のクエリを実行してユーザー数を確認
   let userCount = 0;
   let sampleUserId = "";
+  let allUserIds: string[] = [];
+  let errorMsg = "";
   try {
-    const users = await query<{ id: string; count: number }>`SELECT id FROM auth_users LIMIT 1`;
+    const users = await query<{ id: string }>`SELECT id FROM auth_users LIMIT 5`;
+    allUserIds = users.map(u => String(u.id));
     sampleUserId = users[0]?.id || "none";
-    const countResult = await query<{ count: number }>`SELECT COUNT(*)::int as count FROM auth_users`;
-    userCount = countResult[0]?.count || 0;
+    const countResult = await query<{ count: string | number }>`SELECT COUNT(*) as count FROM auth_users`;
+    userCount = Number(countResult[0]?.count) || 0;
   } catch (error) {
-    // エラーは無視
+    errorMsg = error instanceof Error ? error.message : String(error);
   }
 
   return NextResponse.json({
     DATABASE_URL_AUTH: sanitized,
     host: dbUrl.match(/@([^/]+)/)?.[1] || "unknown",
-    database: dbUrl.match(/\/([^?]+)/)?.[1] || "unknown",
+    database: dbUrl.split('/').pop()?.split('?')[0] || "unknown",
     userCount,
     sampleUserId,
+    allUserIds,
+    errorMsg: errorMsg || undefined,
   });
 }
