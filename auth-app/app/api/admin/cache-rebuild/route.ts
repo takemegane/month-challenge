@@ -21,7 +21,7 @@ function authorize(request: Request): boolean {
   return true;
 }
 
-export async function POST(request: Request) {
+async function handleRequest(request: Request) {
   if (!authorize(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -33,4 +33,12 @@ export async function POST(request: Request) {
 
   const result = await rebuildMonthlyCache(month, deadlineMs);
   return NextResponse.json(result);
+}
+
+export async function POST(request: Request) {
+  return handleRequest(request);
+}
+
+export async function GET(request: Request) {
+  return handleRequest(request);
 }
