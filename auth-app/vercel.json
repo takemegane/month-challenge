@@ -13,7 +13,7 @@
     },
     {
       "path": "/api/admin/cache-worker?token=Summer2025Strong",
-      "schedule": "* * * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }
