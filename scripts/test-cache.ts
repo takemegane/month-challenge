@@ -1,5 +1,5 @@
-import { rebuildMonthlyCache, applyDiffJobs } from "../auth-app/lib/daily-stats-cache.ts";
-import { enqueueDailyStatsDiff, claimDiffJobs, countDiffJobsByStatus } from "../auth-app/lib/cache-jobs.ts";
+import { rebuildMonthlyCache, applyDiffJobs } from "../auth-app/lib/daily-stats-cache";
+import { enqueueDailyStatsDiff, claimDiffJobs, countDiffJobsByStatus } from "../auth-app/lib/cache-jobs";
 
 async function run() {
   console.log("Rebuilding cache for 2025-09");
