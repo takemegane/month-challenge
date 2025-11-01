@@ -127,6 +127,12 @@ function getEntries() {
 async function mockQuery<T = any>(strings: TemplateStringsArray, ...values: any[]): Promise<T[]> {
   const sql = strings.join("?").trim().toLowerCase();
 
+  // Cache tables should always use real database
+  if (sql.includes("auth_daily_stats") || sql.includes("auth_daily_totals")) {
+    logger.warn("Mock query attempted on cache tables - not supported in mock mode");
+    return [] as T[];
+  }
+
   if (sql.includes("select") && sql.includes("from auth_users")) {
     if (sql.includes("where lower(email)")) {
       const email = String(values[0] || "").toLowerCase();
@@ -268,7 +274,8 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
     if (useNeon) {
       try {
         const neonClient = await ensureNeonConnection();
-        return neonClient<T>(strings, ...values);
+        const result = await neonClient(strings, ...values);
+        return result as T[];
       } catch (neonError) {
         logger.error('Neon fallback also failed:', neonError);
         globalThis.__neonClient = undefined;
@@ -283,7 +290,7 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
     setImmediate(async () => {
       try {
         const neonClient = await ensureNeonConnection();
-        await neonClient<T>(strings, ...values);
+        await neonClient(strings, ...values);
       } catch (error) {
         logger.error('Neon backup write failed:', error);
         // Log for monitoring but don't fail the operation
@@ -299,6 +306,11 @@ async function dualWrite<T = any>(strings: TemplateStringsArray, ...values: any[
 async function redisQuery<T = any>(strings: TemplateStringsArray, ...values: any[]): Promise<T[]> {
   const redis = await getRedisClient();
   const sql = strings.join("?").trim().toLowerCase();
+
+  // Cache tables should use Neon, not Redis
+  if (sql.includes("auth_daily_stats") || sql.includes("auth_daily_totals") || sql.includes("entries") && sql.includes("from entries") || sql.includes("users") && sql.includes("from users")) {
+    throw new Error("Cache/public tables not supported in Redis - use Neon");
+  }
 
   // Select user by email
   if (sql.includes("select") && sql.includes("from auth_users") && sql.includes("where lower(email)")) {
@@ -537,7 +549,8 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
       // Fall back to Neon if Redis fails
       if (useNeon) {
         const neonClient = await ensureNeonConnection();
-        return neonClient<T>(strings, ...values);
+        const result = await neonClient(strings, ...values);
+        return result as T[];
       }
       throw error;
     }
@@ -547,8 +560,9 @@ export async function query<T = any>(strings: TemplateStringsArray, ...values: a
   if (useNeon) {
     try {
       const neonClient = await ensureNeonConnection();
-      // @ts-ignore neon template tag signature matches
-      return neonClient<T>(strings, ...values);
+      // Neon expects template tag format
+      const result = await neonClient(strings, ...values);
+      return result as T[];
     } catch (error) {
       logger.error('Neon query failed, resetting connection:', error);
       // Reset Neon client on error for next request

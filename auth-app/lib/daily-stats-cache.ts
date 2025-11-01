@@ -198,31 +198,28 @@ async function rebuildSingleMonth(month: string, deadlineMs: number): Promise<bo
       entry_date: string;
     }>`
       select user_id, entry_date::text as entry_date
-      from public.entries
+      from auth_entries
       where entry_date between ${start} and ${end}
       order by user_id, entry_date
     `;
 
     const groupedByUser = groupEntriesByUser(entries);
 
-    await query`begin`;
-
+    // Note: Neon HTTP driver doesn't support BEGIN/COMMIT/ROLLBACK
+    // Using upsert operations which are idempotent
     try {
       await upsertStatsCache(month, groupedByUser);
       await upsertTotalsCache(month, entries);
       await cleanupObsoleteRows(month, groupedByUser);
 
       if (Date.now() >= deadlineMs) {
-        await query`rollback`;
         await markTaskPending(month, "timeout");
         return false;
       }
 
-      await query`commit`;
       await markTaskSucceeded(month);
       return true;
     } catch (error) {
-      await query`rollback`;
       logger.error("Failed to rebuild month", { month, error });
       await markTaskFailed(month, error);
       return false;
@@ -302,21 +299,33 @@ async function cleanupObsoleteRows(month: string, grouped: Map<string, string[]>
       delete from auth_daily_stats_cache where month = ${month}
     `;
   } else {
-    await query`
-      delete from auth_daily_stats_cache
-      where month = ${month} and user_id not in ${keepUserIds}
+    // Delete rows where user_id is not in the keep list (using individual deletions for simplicity)
+    const allRows = await query<{ user_id: string }>`
+      select user_id from auth_daily_stats_cache where month = ${month}
     `;
+    for (const row of allRows) {
+      if (!keepUserIds.includes(row.user_id)) {
+        await query`delete from auth_daily_stats_cache where month = ${month} and user_id = ${row.user_id}`;
+      }
+    }
   }
 
-  await query`
-    delete from auth_daily_totals_cache
-    where month = ${month}
-      and day not in (
-        select entry_date::date
-        from public.entries
-        where entry_date between ${monthDateRange(month).start} and ${monthDateRange(month).end}
-      )
+  const range = monthDateRange(month);
+  const validDays = await query<{ entry_date: string }>`
+    select distinct entry_date::text as entry_date
+    from auth_entries
+    where entry_date between ${range.start} and ${range.end}
   `;
+  const validDaySet = new Set(validDays.map(r => r.entry_date));
+
+  const cacheDays = await query<{ day: string }>`
+    select day::text as day from auth_daily_totals_cache where month = ${month}
+  `;
+  for (const dayRow of cacheDays) {
+    if (!validDaySet.has(dayRow.day)) {
+      await query`delete from auth_daily_totals_cache where month = ${month} and day = ${dayRow.day}`;
+    }
+  }
 }
 
 function buildBitMask(dates: string[]): string {

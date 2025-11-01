@@ -26,11 +26,7 @@ function authorize(request: Request): boolean {
   return true;
 }
 
-export async function POST(request: Request) {
-  if (!authorize(request)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
+async function processJobs(request: Request) {
   const released = await releaseStaleJobs(10);
 
   const limitParam = new URL(request.url).searchParams.get("limit");
@@ -49,4 +45,21 @@ export async function POST(request: Request) {
   const failed = await countDiffJobsByStatus("failed");
 
   return NextResponse.json({ status: "ok", ...result, released, pending, failed });
+}
+
+export async function POST(request: Request) {
+  if (!authorize(request)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  return processJobs(request);
+}
+
+// GET メソッドも追加（手動実行・テスト用）
+export async function GET(request: Request) {
+  if (!authorize(request)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  return processJobs(request);
 }
