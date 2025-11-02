@@ -350,5 +350,47 @@ if (isDayRestricted(iso)) {
 
 ---
 
+## 📝 システム理解の整理（2025-11-01）
+
+### ✅ 現在のシステム構成の明確化
+
+#### **実際に動作しているシステム**
+1. **データストレージ**: Neon PostgreSQL のみ（Redis完全削除）
+2. **データ取得方法**: リアルタイムクエリ（`auth_entries`テーブルから直接取得）
+3. **高速化の手法**:
+   - 段階的読み込み（3つのAPIに分割）
+   - データベースインデックス最適化
+   - SWRによるクライアントサイドキャッシング
+4. **パフォーマンス**: 平均0.27秒（DBクエリ0.16ms + ネットワーク250ms）
+
+#### **構築済みだが使用されていないもの**
+- **キャッシュテーブル**: `auth_daily_stats_cache`、`auth_daily_totals_cache`
+- **ジョブキュー**: `auth_daily_stats_jobs`（1件pending）
+- **キャッシュワーカー**: `/api/admin/cache-worker`（cronジョブ削除済み）
+- **削除理由**: Vercel Hobby Planで1分ごとのcronが使用不可
+
+#### **APIの動作詳細**
+```typescript
+// app/api/admin/daily-stats/route.ts:56-58
+// キャッシュテーブルは使わず、auth_entries から直接取得
+const entryRows = await query<{ user_id: string; entry_date: string }>`
+  select user_id, entry_date from auth_entries
+  where entry_date between ${startStr} and ${endStr}
+  order by entry_date asc
+`;
+```
+
+#### **主要な変更点のまとめ**
+1. **Redis → Neon 移行**: アーキテクチャのシンプル化（37ユーザー、482エントリー）
+2. **段階的読み込み**: 初期表示速度70%改善（2025-09-27実装）
+3. **キャッシュシステム**: 将来の拡張用に準備済み（現在は未使用）
+
+#### **スケーラビリティの見通し**
+- **現在**: 37ユーザー、リアルタイムクエリで十分高速
+- **〜500ユーザー**: 現在の構成で問題なし
+- **500ユーザー以上**: キャッシュシステムの有効化を検討
+
+---
+
 **最終更新**: 2025-11-01
 **作業者**: Claude Code + 元気さん
