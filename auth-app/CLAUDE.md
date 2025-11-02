@@ -1,5 +1,9 @@
 # 月チャレ開発履歴・注意点
 
+## 🔗 本番環境URL
+
+**ログインURL**: https://month-challenge-auth.vercel.app/
+
 ## 📊 今回のセッション成果
 
 ### 🔄 Redis → Neon データ移行完了（2025-11-01）
