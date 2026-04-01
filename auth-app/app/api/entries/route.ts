@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   const s = start.toISOString().slice(0,10);
   const e = end.toISOString().slice(0,10);
   const rows = await query<{ entry_date: string }>`
-    select entry_date from auth_entries where user_id = ${uid} and entry_date between ${s} and ${e} order by entry_date asc
+    select entry_date::text as entry_date from auth_entries where user_id = ${uid} and entry_date between ${s} and ${e} order by entry_date asc
   `;
   return NextResponse.json({ entries: rows });
 }

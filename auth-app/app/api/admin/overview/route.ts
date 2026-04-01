@@ -54,7 +54,7 @@ export async function GET(req: Request) {
   `;
 
   const entryRows = await query<{ user_id: string; entry_date: string }>`
-    select user_id, entry_date from auth_entries where entry_date between ${startStr} and ${endStr} order by entry_date asc
+    select user_id, entry_date::text as entry_date from auth_entries where entry_date between ${startStr} and ${endStr} order by entry_date asc
   `;
 
   const entriesByUser = new Map<string, string[]>();

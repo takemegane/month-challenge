@@ -171,6 +171,34 @@ export function useCreateEntry() {
   };
 }
 
+export function useToggleEntry() {
+  const { mutate } = useSWRConfig();
+
+  const { trigger, isMutating, error } = useSWRMutation(
+    '/api/entries/toggle',
+    postFetcher,
+    {
+      onSuccess: () => {
+        // Invalidate all related entries caches
+        mutate(
+          key => {
+            if (typeof key !== 'string') return false;
+            return key.startsWith('/api/entries');
+          },
+          undefined,
+          { revalidate: true }
+        );
+      },
+    }
+  );
+
+  return {
+    toggleEntry: trigger,
+    isToggling: isMutating,
+    error,
+  };
+}
+
 export function useUsers() {
   const { data, error, isLoading, mutate } = useSWR<{ users: User[] }>('/api/admin/users');
 
@@ -276,8 +304,8 @@ export function prefetchCalendarRange(currentMonth: string) {
   // Helper function to add/subtract months
   const addMonths = (monthStr: string, diff: number): string => {
     const [year, month] = monthStr.split('-').map(Number);
-    const date = new Date(year, month - 1 + diff, 1);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const date = new Date(Date.UTC(year, month - 1 + diff, 1));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
   };
 
   // 1. Immediate prefetch: Adjacent months (high priority)
@@ -338,8 +366,8 @@ export function prefetchOverviewRange(currentMonth: string) {
   // Helper function to add/subtract months
   const addMonths = (monthStr: string, diff: number): string => {
     const [year, month] = monthStr.split('-').map(Number);
-    const date = new Date(year, month - 1 + diff, 1);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const date = new Date(Date.UTC(year, month - 1 + diff, 1));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
   };
 
   // 1. Immediate prefetch: Adjacent months (high priority)

@@ -11,9 +11,9 @@ function firstOfMonth(dateStr: string) {
 }
 
 function addMonths(base: string, diff: number) {
-  const d = new Date(base);
-  d.setMonth(d.getMonth() + diff);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  const [y, m] = base.split('-');
+  const d = new Date(Date.UTC(Number(y), Number(m) - 1 + diff, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
 export function CalendarView({ initialMonth }: { initialMonth?: string }) {
@@ -29,16 +29,18 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
 
   const headerTitle = useMemo(() => {
     if (month === thisMonth) return "今月の件数";
-    const m = new Date(month).getMonth() + 1;
-    return `${m}月の件数`;
+    const [y, m] = month.split('-');
+    return `${Number(m)}月の件数`;
   }, [month, thisMonth]);
 
   // Build date range for SWR query
   const { since, until } = useMemo(() => {
-    const d = new Date(month);
-    const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-    const endDate = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
+    const [y, m] = month.split('-');
+    const yearNum = Number(y);
+    const monthNum = Number(m) - 1;
+    const start = `${yearNum}-${String(monthNum + 1).padStart(2, "0")}-01`;
+    const endDate = new Date(Date.UTC(yearNum, monthNum + 1, 0)).getUTCDate();
+    const end = `${yearNum}-${String(monthNum + 1).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
     return { since: start, until: end };
   }, [month]);
 
