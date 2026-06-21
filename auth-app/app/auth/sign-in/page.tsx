@@ -1,42 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  const [iconUrl, setIconUrl] = useState<string>("");
-  const [iconLoading, setIconLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    // Load current icon
-    console.log("Loading current icon...");
-    fetch("/api/icon/current")
-      .then(res => {
-        console.log("Icon API response status:", res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log("Icon API response data:", data);
-        if (data.iconUrl) {
-          console.log("Setting icon URL to:", data.iconUrl);
-          setIconUrl(data.iconUrl);
-        } else {
-          // Use default icon if no custom icon
-          setIconUrl("https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg");
-        }
-        setIconLoading(false);
-      })
-      .catch((error) => {
-        console.error("Failed to load current icon:", error);
-        // Use default icon on error
-        setIconUrl("https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg");
-        setIconLoading(false);
-      });
-  }, []);
-  
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
@@ -90,55 +62,20 @@ export default function SignIn() {
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#27272a', marginBottom: '1rem' }}>月チャレ</h1>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-            {iconLoading ? (
-              // Show animated loading placeholder
-              <div
-                style={{
-                  width: '96px',
-                  height: '96px',
-                  borderRadius: '1rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  border: '2px solid rgba(255, 255, 255, 0.8)',
-                  background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.1) 25%, rgba(245, 158, 11, 0.2) 50%, rgba(245, 158, 11, 0.1) 75%)',
-                  backgroundSize: '200% 100%',
-                  animation: 'shimmer 1.5s infinite',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#f59e0b',
-                  fontSize: '0.75rem',
-                  fontWeight: '600'
-                }}
-              >
-                <style>
-                  {`
-                    @keyframes shimmer {
-                      0% { background-position: -200% 0; }
-                      100% { background-position: 200% 0; }
-                    }
-                  `}
-                </style>
-                📱
-              </div>
-            ) : (
-              // Show actual icon after loading
-              <img
-                src={iconUrl}
-                alt="月チャレアイコン"
-                style={{
-                  width: '96px',
-                  height: '96px',
-                  borderRadius: '1rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  border: '2px solid rgba(255, 255, 255, 0.8)'
-                }}
-                onError={(e) => {
-                  console.log("Icon load failed, falling back to default");
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg";
-                }}
-              />
-            )}
+            <Image
+              src="/icons/icon-192.png"
+              alt="月チャレアイコン"
+              width={192}
+              height={192}
+              priority
+              style={{
+                width: '96px',
+                height: '96px',
+                borderRadius: '1rem',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                border: '2px solid rgba(255, 255, 255, 0.8)'
+              }}
+            />
           </div>
         </div>
         
