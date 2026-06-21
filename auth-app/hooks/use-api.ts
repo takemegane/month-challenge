@@ -175,15 +175,17 @@ export function useCreateEntry() {
 
 export function useToggleEntry() {
   const { mutate } = useSWRConfig();
-  // Track in-flight dates so we can lock only the tapped cell (not the whole grid).
-  const [pendingDates, setPendingDates] = useState<Set<string>>(() => new Set());
+  // date -> desired marked state while a toggle is in flight.
+  // This overlay keeps the optimistic state visible even if a competing GET
+  // (in-flight mount fetch / reconnect / remount revalidate) momentarily
+  // overwrites the month cache with server data that predates this write.
+  const [pendingMarks, setPendingMarks] = useState<Map<string, boolean>>(
+    () => new Map()
+  );
 
-  const buildEntry = (entry_date: string): Entry => ({
-    id: `temp-${entry_date}`,
-    user_id: 'optimistic',
-    entry_date,
-    created_at: new Date().toISOString(),
-  });
+  // Match the GET /api/entries shape (entry_date only) to minimize churn
+  // when a later revalidation replaces the cache.
+  const buildEntry = (entry_date: string): Entry => ({ entry_date } as Entry);
 
   const sortByDate = (entries: Entry[]) =>
     [...entries].sort((a, b) =>
@@ -191,14 +193,22 @@ export function useToggleEntry() {
     );
 
   const toggleEntry = useCallback(
-    async ({ entry_date, swrKey }: { entry_date: string; swrKey?: string }) => {
-      setPendingDates((prev) => {
-        const next = new Set(prev);
-        next.add(entry_date);
+    async ({
+      entry_date,
+      swrKey,
+      nextMarked,
+    }: {
+      entry_date: string;
+      swrKey?: string;
+      nextMarked: boolean;
+    }) => {
+      setPendingMarks((prev) => {
+        const next = new Map(prev);
+        next.set(entry_date, nextMarked);
         return next;
       });
 
-      // Immediately flip the marked state in the cached month data.
+      // Immediately flip the marked state in the cached month data (keeps count in sync).
       const optimistic = (current?: EntriesResponse): EntriesResponse => {
         const entries = current?.entries ? [...current.entries] : [];
         const exists = entries.some(
@@ -268,8 +278,8 @@ export function useToggleEntry() {
           );
         }
       } finally {
-        setPendingDates((prev) => {
-          const next = new Set(prev);
+        setPendingMarks((prev) => {
+          const next = new Map(prev);
           next.delete(entry_date);
           return next;
         });
@@ -280,8 +290,8 @@ export function useToggleEntry() {
 
   return {
     toggleEntry,
-    pendingDates,
-    isToggling: pendingDates.size > 0,
+    pendingMarks,
+    isToggling: pendingMarks.size > 0,
   };
 }
 

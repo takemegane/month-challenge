@@ -11,12 +11,12 @@ type Props = {
 };
 
 export function CalendarGrid({ month, today = getJstTodayDate(), marked, swrKey, onChange }: Props) {
-  const { toggleEntry, pendingDates } = useToggleEntry();
+  const { toggleEntry, pendingMarks } = useToggleEntry();
 
-  async function handleToggle(iso: string) {
-    if (pendingDates.has(iso)) return; // prevent double submit on the same cell
+  async function handleToggle(iso: string, currentlyMarked: boolean) {
+    if (pendingMarks.has(iso)) return; // a toggle for this date is already in flight
     try {
-      await toggleEntry({ entry_date: iso, swrKey });
+      await toggleEntry({ entry_date: iso, swrKey, nextMarked: !currentlyMarked });
       if (onChange) onChange();
     } catch (e) {
       console.error(e);
@@ -49,13 +49,16 @@ export function CalendarGrid({ month, today = getJstTodayDate(), marked, swrKey,
           const isToday = iso === todayIso;
           const isFuture = iso > todayIso;
           
-          const isMarked = marked?.has(iso) ?? false;
-          const isPending = pendingDates.has(iso);
+          const baseMarked = marked?.has(iso) ?? false;
+          const isPending = pendingMarks.has(iso);
+          // While a toggle is in flight, trust the optimistic overlay over the
+          // (possibly stale) cache-derived value so the stamp never blinks.
+          const isMarked = isPending ? !!pendingMarks.get(iso) : baseMarked;
 
           return (
             <button
               key={iso}
-              onClick={!isFuture ? () => handleToggle(iso) : undefined}
+              onClick={!isFuture ? () => handleToggle(iso, isMarked) : undefined}
               className={`tap-target aspect-square rounded-lg text-base sm:text-lg flex items-center justify-center border transition overflow-hidden pt-0.5 pb-1 sm:pt-0 sm:pb-0 ${
                 isToday
                   ? `border-orange-300 ${isMarked ? "bg-orange-100 hover:bg-orange-200" : "bg-orange-200 hover:bg-green-500"} text-orange-900`
