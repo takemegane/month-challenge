@@ -45,7 +45,7 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
   }, [month]);
 
   // Use SWR for data fetching with caching
-  const { entries, count, isLoading } = useEntries(undefined, since, until);
+  const { entries, count, isLoading, swrKey } = useEntries(undefined, since, until);
 
   // Create marked set from entries
   const marked = useMemo(() => {
@@ -151,9 +151,9 @@ export function CalendarView({ initialMonth }: { initialMonth?: string }) {
         month={month}
         today={today}
         marked={marked}
+        swrKey={swrKey}
         onChange={() => {
-          // SWR will automatically revalidate when entries change
-          // No manual fetch needed
+          // Optimistic update handles the cache; nothing to do here.
         }}
       />
     </div>

@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import useSWR, { useSWRConfig, preload } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { fetcher } from '../lib/swr-config';
@@ -88,6 +89,7 @@ export function useEntries(month?: string, since?: string, until?: string) {
     isLoading,
     isError: !!error,
     mutate,
+    swrKey: key,
   };
 }
 
@@ -173,29 +175,113 @@ export function useCreateEntry() {
 
 export function useToggleEntry() {
   const { mutate } = useSWRConfig();
+  // Track in-flight dates so we can lock only the tapped cell (not the whole grid).
+  const [pendingDates, setPendingDates] = useState<Set<string>>(() => new Set());
 
-  const { trigger, isMutating, error } = useSWRMutation(
-    '/api/entries/toggle',
-    postFetcher,
-    {
-      onSuccess: () => {
-        // Invalidate all related entries caches
-        mutate(
-          key => {
-            if (typeof key !== 'string') return false;
-            return key.startsWith('/api/entries');
-          },
-          undefined,
-          { revalidate: true }
+  const buildEntry = (entry_date: string): Entry => ({
+    id: `temp-${entry_date}`,
+    user_id: 'optimistic',
+    entry_date,
+    created_at: new Date().toISOString(),
+  });
+
+  const sortByDate = (entries: Entry[]) =>
+    [...entries].sort((a, b) =>
+      String(a.entry_date).localeCompare(String(b.entry_date))
+    );
+
+  const toggleEntry = useCallback(
+    async ({ entry_date, swrKey }: { entry_date: string; swrKey?: string }) => {
+      setPendingDates((prev) => {
+        const next = new Set(prev);
+        next.add(entry_date);
+        return next;
+      });
+
+      // Immediately flip the marked state in the cached month data.
+      const optimistic = (current?: EntriesResponse): EntriesResponse => {
+        const entries = current?.entries ? [...current.entries] : [];
+        const exists = entries.some(
+          (e) => String(e.entry_date).slice(0, 10) === entry_date
         );
-      },
-    }
+        if (exists) {
+          return {
+            entries: entries.filter(
+              (e) => String(e.entry_date).slice(0, 10) !== entry_date
+            ),
+          };
+        }
+        return { entries: sortByDate([...entries, buildEntry(entry_date)]) };
+      };
+
+      try {
+        if (swrKey) {
+          // Optimistic update against the specific month cache only.
+          // The POST response (added/removed) is authoritative, so we populate the
+          // cache from it and skip the extra revalidation GET entirely.
+          await mutate(
+            swrKey,
+            async (current?: EntriesResponse) => {
+              const res = await fetch('/api/entries/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ entry_date }),
+                credentials: 'include',
+              });
+              if (!res.ok) {
+                const error = new Error('HTTP Error');
+                (error as any).status = res.status;
+                (error as any).info = await res.json().catch(() => ({}));
+                throw error;
+              }
+              const result = await res.json().catch(() => ({}));
+              const entries = current?.entries ? [...current.entries] : [];
+              const exists = entries.some(
+                (e) => String(e.entry_date).slice(0, 10) === entry_date
+              );
+              if (result?.status === 'removed') {
+                return {
+                  entries: entries.filter(
+                    (e) => String(e.entry_date).slice(0, 10) !== entry_date
+                  ),
+                };
+              }
+              if (result?.status === 'added' && !exists) {
+                return { entries: sortByDate([...entries, buildEntry(entry_date)]) };
+              }
+              return { entries };
+            },
+            {
+              optimisticData: optimistic,
+              rollbackOnError: true,
+              populateCache: true,
+              revalidate: false,
+            }
+          );
+        } else {
+          // Fallback when no cache key is supplied: legacy behavior.
+          await postFetcher('/api/entries/toggle', { arg: { entry_date } });
+          await mutate(
+            (key) => typeof key === 'string' && key.startsWith('/api/entries'),
+            undefined,
+            { revalidate: true }
+          );
+        }
+      } finally {
+        setPendingDates((prev) => {
+          const next = new Set(prev);
+          next.delete(entry_date);
+          return next;
+        });
+      }
+    },
+    [mutate]
   );
 
   return {
-    toggleEntry: trigger,
-    isToggling: isMutating,
-    error,
+    toggleEntry,
+    pendingDates,
+    isToggling: pendingDates.size > 0,
   };
 }
 

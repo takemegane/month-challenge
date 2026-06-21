@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import { getJstTodayDate, startOfMonthJst, endOfMonthJst, toISODate } from "../lib/date";
 import { useToggleEntry } from "../hooks/use-api";
 
@@ -7,23 +6,20 @@ type Props = {
   month?: string; // YYYY-MM-01 (JST)
   today?: string; // YYYY-MM-DD (JST)
   marked?: Set<string>;
+  swrKey?: string; // SWR cache key of the displayed month (for optimistic update)
   onChange?: () => void;
 };
 
-export function CalendarGrid({ month, today = getJstTodayDate(), marked, onChange }: Props) {
-  const { toggleEntry, isToggling } = useToggleEntry();
-  const [actingDate, setActingDate] = useState<string | null>(null);
+export function CalendarGrid({ month, today = getJstTodayDate(), marked, swrKey, onChange }: Props) {
+  const { toggleEntry, pendingDates } = useToggleEntry();
 
   async function handleToggle(iso: string) {
-    if (isToggling) return;
+    if (pendingDates.has(iso)) return; // prevent double submit on the same cell
     try {
-      setActingDate(iso);
-      await toggleEntry({ entry_date: iso });
+      await toggleEntry({ entry_date: iso, swrKey });
       if (onChange) onChange();
     } catch (e) {
       console.error(e);
-    } finally {
-      setActingDate(null);
     }
   }
 
@@ -54,7 +50,7 @@ export function CalendarGrid({ month, today = getJstTodayDate(), marked, onChang
           const isFuture = iso > todayIso;
           
           const isMarked = marked?.has(iso) ?? false;
-          const isActing = actingDate === iso && isToggling;
+          const isPending = pendingDates.has(iso);
 
           return (
             <button
@@ -66,19 +62,17 @@ export function CalendarGrid({ month, today = getJstTodayDate(), marked, onChang
                   : isFuture
                     ? "border-orange-100 bg-gray-50 text-gray-400 opacity-60 cursor-not-allowed"
                     : `border-orange-200 ${isMarked ? "bg-orange-50 hover:bg-orange-100" : "bg-white hover:bg-orange-50 text-orange-900 cursor-pointer"}`
-              } ${isFuture ? "opacity-60" : "cursor-pointer"} ${isActing ? "opacity-70 pointer-events-none" : ""}`}
-              disabled={isFuture || isToggling}
-              aria-disabled={isFuture || isToggling}
+              } ${isFuture ? "opacity-60" : "cursor-pointer"} ${isPending ? "opacity-70" : ""}`}
+              disabled={isFuture || isPending}
+              aria-disabled={isFuture || isPending}
               aria-label={`${iso}${isToday ? " 今日" : ""}`}
               title={iso}
             >
               <div className="flex flex-col items-center leading-tight">
                 <span className={`text-xl sm:text-2xl ${isFuture ? 'text-gray-400' : ''}`}>{new Date(iso).getDate()}</span>
-                {isActing ? (
-                  <span className="mt-0 sm:mt-0.5 text-base sm:text-2xl font-semibold text-orange-900 leading-none">…</span>
-                ) : isMarked ? (
+                {isMarked ? (
                   <img
-                    src="/api/icon/icon-192"
+                    src="/icons/icon-192.png"
                     alt="完了"
                     className={`mt-0 sm:mt-0.5 w-4 h-4 sm:w-8 sm:h-8 rounded ${isToday ? '' : 'opacity-80'}`}
                   />

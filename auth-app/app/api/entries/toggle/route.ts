@@ -47,16 +47,17 @@ export async function POST(req: Request) {
     if (existingEntries.length > 0) {
       // 存在する場合は取り消し（削除）
       await query`delete from auth_entries where user_id = ${uid} and entry_date = ${entry_date}`;
-      try {
-        await enqueueDailyStatsDiff({
-          userId: uid,
-          entryDate: entry_date,
-          action: "remove",
-          source: "user_entry",
-        });
-      } catch (cacheError) {
+      // NOTE: daily-stats cache jobs are not consumed by any scheduled worker
+      // (cron removed; stats read directly from auth_entries). Fire-and-forget so
+      // it never blocks the toggle response.
+      enqueueDailyStatsDiff({
+        userId: uid,
+        entryDate: entry_date,
+        action: "remove",
+        source: "user_entry",
+      }).catch((cacheError) => {
         logger.error("Failed to enqueue cache diff job for deletion", { uid, entry_date, error: cacheError });
-      }
+      });
       return NextResponse.json({ status: 'removed' });
     } else {
       // 存在しない場合は追加
@@ -66,16 +67,15 @@ export async function POST(req: Request) {
         returning id
       `;
       if (rows.length > 0) {
-        try {
-          await enqueueDailyStatsDiff({
-            userId: uid,
-            entryDate: entry_date,
-            action: "add",
-            source: "user_entry",
-          });
-        } catch (cacheError) {
+        // See note above: fire-and-forget, do not block the response.
+        enqueueDailyStatsDiff({
+          userId: uid,
+          entryDate: entry_date,
+          action: "add",
+          source: "user_entry",
+        }).catch((cacheError) => {
           logger.error("Failed to enqueue cache diff job for addition", { uid, entry_date, error: cacheError });
-        }
+        });
       }
       return NextResponse.json({ status: 'added' });
     }
