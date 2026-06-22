@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import useSWR, { useSWRConfig, preload } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { fetcher } from '../lib/swr-config';
@@ -175,16 +175,18 @@ export function useCreateEntry() {
 
 export function useToggleEntry() {
   const { mutate } = useSWRConfig();
-  // date -> desired marked state while a toggle is in flight.
-  // This overlay keeps the optimistic state visible even if a competing GET
-  // (in-flight mount fetch / reconnect / remount revalidate) momentarily
-  // overwrites the month cache with server data that predates this write.
+  // date -> desired marked state while a toggle is in flight (instant overlay).
   const [pendingMarks, setPendingMarks] = useState<Map<string, boolean>>(
     () => new Map()
   );
+  // Serialize toggles so each POST/populate sees the previous one's committed
+  // result -> no cross-date populate-ordering races (fixes the brief disappear).
+  const chainRef = useRef<Promise<unknown>>(Promise.resolve());
+  // Outstanding toggle count so ONLY the last one runs the reconcile GET
+  // (a single GET after all commits -> no dedupe/out-of-order between reconciles).
+  const inFlightRef = useRef(0);
 
-  // Match the GET /api/entries shape (entry_date only) to minimize churn
-  // when a later revalidation replaces the cache.
+  // Used only for the instant optimistic overlay/count; never the source of truth.
   const buildEntry = (entry_date: string): Entry => ({ entry_date } as Entry);
 
   const sortByDate = (entries: Entry[]) =>
@@ -202,13 +204,11 @@ export function useToggleEntry() {
       swrKey?: string;
       nextMarked: boolean;
     }) => {
-      setPendingMarks((prev) => {
-        const next = new Map(prev);
-        next.set(entry_date, nextMarked);
-        return next;
-      });
+      // Instant overlay + lock (does not wait for the queue).
+      setPendingMarks((prev) => new Map(prev).set(entry_date, nextMarked));
+      inFlightRef.current += 1;
 
-      // Immediately flip the marked state in the cached month data (keeps count in sync).
+      // Transient, instant guess for snappy count/marked. NOT the source of truth.
       const optimistic = (current?: EntriesResponse): EntriesResponse => {
         const entries = current?.entries ? [...current.entries] : [];
         const exists = entries.some(
@@ -224,66 +224,72 @@ export function useToggleEntry() {
         return { entries: sortByDate([...entries, buildEntry(entry_date)]) };
       };
 
-      try {
-        if (swrKey) {
-          // Optimistic update against the specific month cache only.
-          // The POST response (added/removed) is authoritative, so we populate the
-          // cache from it and skip the extra revalidation GET entirely.
-          await mutate(
-            swrKey,
-            async (current?: EntriesResponse) => {
-              const res = await fetch('/api/entries/toggle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entry_date }),
-                credentials: 'include',
-              });
-              if (!res.ok) {
-                const error = new Error('HTTP Error');
-                (error as any).status = res.status;
-                (error as any).info = await res.json().catch(() => ({}));
-                throw error;
+      const run = async () => {
+        try {
+          if (swrKey) {
+            // 1) POST and write the authoritative month snapshot the server returns.
+            //    No client-side filter/push reconstruction of the confirmed value.
+            await mutate(
+              swrKey,
+              async (current?: EntriesResponse) => {
+                const res = await fetch('/api/entries/toggle', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ entry_date }),
+                  credentials: 'include',
+                });
+                if (!res.ok) {
+                  const error = new Error('HTTP Error');
+                  (error as any).status = res.status;
+                  (error as any).info = await res.json().catch(() => ({}));
+                  throw error;
+                }
+                const result = await res.json().catch(() => ({}));
+                if (Array.isArray(result?.entries)) {
+                  return { entries: result.entries as Entry[] };
+                }
+                // Fallback for an older server that returns only { status }.
+                return current ?? { entries: [] };
+              },
+              {
+                optimisticData: optimistic,
+                rollbackOnError: true,
+                populateCache: true,
+                revalidate: false,
               }
-              const result = await res.json().catch(() => ({}));
-              const entries = current?.entries ? [...current.entries] : [];
-              const exists = entries.some(
-                (e) => String(e.entry_date).slice(0, 10) === entry_date
-              );
-              if (result?.status === 'removed') {
-                return {
-                  entries: entries.filter(
-                    (e) => String(e.entry_date).slice(0, 10) !== entry_date
-                  ),
-                };
-              }
-              if (result?.status === 'added' && !exists) {
-                return { entries: sortByDate([...entries, buildEntry(entry_date)]) };
-              }
-              return { entries };
-            },
-            {
-              optimisticData: optimistic,
-              rollbackOnError: true,
-              populateCache: true,
-              revalidate: false,
+            );
+
+            // 2) Reconcile ONLY when this is the last outstanding toggle: one fresh
+            //    GET after every commit. Defeats stale in-flight GETs (e.g. the mount
+            //    fetch) and any populate ordering, with no GET-vs-GET race.
+            if (inFlightRef.current === 1) {
+              await mutate(swrKey, undefined, { revalidate: true });
             }
-          );
-        } else {
-          // Fallback when no cache key is supplied: legacy behavior.
-          await postFetcher('/api/entries/toggle', { arg: { entry_date } });
-          await mutate(
-            (key) => typeof key === 'string' && key.startsWith('/api/entries'),
-            undefined,
-            { revalidate: true }
-          );
+          } else {
+            // Fallback when no cache key is supplied: legacy behavior.
+            await postFetcher('/api/entries/toggle', { arg: { entry_date } });
+            await mutate(
+              (key) => typeof key === 'string' && key.startsWith('/api/entries'),
+              undefined,
+              { revalidate: true }
+            );
+          }
+        } finally {
+          inFlightRef.current -= 1;
+          // Release the overlay only after this toggle's processing (incl. the
+          // reconcile, when fired) has landed, so the base cache is already true.
+          setPendingMarks((prev) => {
+            const next = new Map(prev);
+            next.delete(entry_date);
+            return next;
+          });
         }
-      } finally {
-        setPendingMarks((prev) => {
-          const next = new Map(prev);
-          next.delete(entry_date);
-          return next;
-        });
-      }
+      };
+
+      // Append to the serialized chain (continue even if a previous toggle threw).
+      const next = chainRef.current.then(run, run);
+      chainRef.current = next;
+      await next;
     },
     [mutate]
   );

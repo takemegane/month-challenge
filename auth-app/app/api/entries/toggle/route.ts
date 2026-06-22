@@ -44,6 +44,8 @@ export async function POST(req: Request) {
       select id from auth_entries where user_id = ${uid} and entry_date = ${entry_date}
     `;
 
+    let status: 'added' | 'removed';
+
     if (existingEntries.length > 0) {
       // 存在する場合は取り消し（削除）
       await query`delete from auth_entries where user_id = ${uid} and entry_date = ${entry_date}`;
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
       }).catch((cacheError) => {
         logger.error("Failed to enqueue cache diff job for deletion", { uid, entry_date, error: cacheError });
       });
-      return NextResponse.json({ status: 'removed' });
+      status = 'removed';
     } else {
       // 存在しない場合は追加
       const rows = await query<{ id: string }>`
@@ -77,8 +79,25 @@ export async function POST(req: Request) {
           logger.error("Failed to enqueue cache diff job for addition", { uid, entry_date, error: cacheError });
         });
       }
-      return NextResponse.json({ status: 'added' });
+      status = 'added';
     }
+
+    // 当該トグル後に確定したその月の entries を返す（GET /api/entries と同形）。
+    // クライアントはこれを唯一の正本としてキャッシュ確定する。
+    const ym = entry_date.slice(0, 7); // 'YYYY-MM'（entry_date は JST 日付文字列）
+    const [yy, mm] = ym.split('-').map(Number);
+    const lastDay = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+    const monthStart = `${ym}-01`;
+    const monthEnd = `${ym}-${String(lastDay).padStart(2, '0')}`;
+
+    const entries = await query<{ entry_date: string }>`
+      select entry_date::text as entry_date
+      from auth_entries
+      where user_id = ${uid} and entry_date between ${monthStart} and ${monthEnd}
+      order by entry_date asc
+    `;
+
+    return NextResponse.json({ status, entries });
   } catch (error) {
     logger.error('Error toggling entry:', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
