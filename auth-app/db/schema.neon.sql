@@ -30,3 +30,9 @@ drop trigger if exists trig_auth_entries_updated_at on public.auth_entries;
 create trigger trig_auth_entries_updated_at before update on public.auth_entries
 for each row execute function public.set_updated_at();
 
+create table if not exists public.auth_rate_limits (
+  key text primary key,
+  count int not null default 0,
+  window_start timestamptz not null default now()
+);
+

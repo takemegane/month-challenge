@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { query } from "../../../../lib/db";
 import { hashPassword, signToken, getSessionSecret } from "../../../../lib/crypto";
+import { checkRateLimit, getClientIp } from "../../../../lib/rate-limit";
 
 const Body = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -10,6 +11,11 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const allowed = await checkRateLimit(`register:${ip}`, 10, 60);
+  if (!allowed) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
   const json = await req.json().catch(()=>null);
   const parse = Body.safeParse(json);
   if (!parse.success) {

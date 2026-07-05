@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query } from "../../../../lib/db";
 import { verifyPassword, signToken, getSessionSecret } from "../../../../lib/crypto";
 import { ensureAdminSeeded } from "../../../../lib/admin-seed";
+import { checkRateLimit, getClientIp } from "../../../../lib/rate-limit";
 
 const Body = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -10,6 +11,11 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const allowed = await checkRateLimit(`login:${ip}`, 30, 15);
+  if (!allowed) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
   await ensureAdminSeeded();
   const json = await req.json().catch(()=>null);
   const parse = Body.safeParse(json);
