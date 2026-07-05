@@ -4,28 +4,9 @@ import { withNoStore } from "../../../../lib/http-cache";
 
 export async function GET(request: NextRequest) {
   try {
-    // First check if uploaded icon exists in file system (fastest option)
-    const fs = require('fs');
-    const path = require('path');
-    const uploadedIconPath = path.join(process.cwd(), "public", "icons", "icon-192.png");
-
-    if (fs.existsSync(uploadedIconPath)) {
-      console.log("Serving icon-192 from filesystem");
-      const buffer = fs.readFileSync(uploadedIconPath);
-      return new NextResponse(buffer, {
-        headers: withNoStore({
-          'Content-Type': 'image/png',
-        }),
-      });
-    }
-
-    // Then check persistent storage
     const iconData = await getIcon('192');
     if (iconData) {
-      console.log("Serving icon-192 from persistent storage");
       const buffer = Buffer.from(iconData, 'base64');
-
-      // Use cache-busting headers for custom icons to prevent display issues
       return new NextResponse(buffer, {
         headers: withNoStore({
           'Content-Type': 'image/png',
@@ -34,7 +15,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Fallback to default icon
-    console.log("Serving icon-192 from default URL");
     const defaultIconUrl = `https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg`;
     const response = await fetch(defaultIconUrl);
 

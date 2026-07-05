@@ -36,3 +36,9 @@ create table if not exists public.auth_rate_limits (
   window_start timestamptz not null default now()
 );
 
+create table if not exists public.auth_pwa_icons (
+  size text primary key,
+  data text not null,
+  updated_at timestamptz not null default now()
+);
+
