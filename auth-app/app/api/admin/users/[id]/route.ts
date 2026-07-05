@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "../../../../../lib/crypto";
+import { verifyToken, getSessionSecret } from "../../../../../lib/crypto";
 import { query } from "../../../../../lib/db";
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,7 +8,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const m = /(?:^|; )auth-token=([^;]+)/.exec(cookie);
   if (!m) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
+  const secret = getSessionSecret();
   const v = verifyToken(decodeURIComponent(m[1]), secret);
   if (!v.valid) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 

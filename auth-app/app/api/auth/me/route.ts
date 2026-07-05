@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "../../../../lib/crypto";
+import { verifyToken, getSessionSecret } from "../../../../lib/crypto";
 import { query } from "../../../../lib/db";
 
 export async function GET(req: Request) {
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   }
 
   const token = decodeURIComponent(m[1]);
-  const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
+  const secret = getSessionSecret();
   const v = verifyToken(token, secret);
 
   if (!v.valid) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { query } from "../../../../lib/db";
-import { verifyPassword, signToken } from "../../../../lib/crypto";
+import { verifyPassword, signToken, getSessionSecret } from "../../../../lib/crypto";
 import { ensureAdminSeeded } from "../../../../lib/admin-seed";
 
 const Body = z.object({
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const u = rows[0];
   if (!u) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   if (!verifyPassword(password, u.password_hash)) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
-  const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
+  const secret = getSessionSecret();
   const token = signToken({ sub: u.id, email, name: u.name, is_admin: u.is_admin, exp: Math.floor(Date.now()/1000) + 60*60*24*30 }, secret);
 
   if (process.env.NODE_ENV === 'development') {

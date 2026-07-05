@@ -1,4 +1,4 @@
-import { verifyToken } from "./crypto";
+import { verifyToken, getSessionSecret } from "./crypto";
 import { query } from "./db";
 
 type AdminUser = {
@@ -19,7 +19,7 @@ export async function requireAdmin(req: Request): Promise<OkResult | ErrResult> 
   }
 
   const token = decodeURIComponent(match[1]);
-  const secret = process.env.AUTH_SESSION_SECRET || "dev-secret";
+  const secret = getSessionSecret();
   const verification = verifyToken(token, secret);
   if (!verification.valid) {
     return { ok: false, status: 401, body: { error: "unauthorized" } };

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "../../../../../../lib/admin-auth";
 import { query } from "../../../../../../lib/db";
-import { hashPassword, signToken } from "../../../../../../lib/crypto";
+import { hashPassword, signToken, getSessionSecret } from "../../../../../../lib/crypto";
 
 const BodySchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
@@ -59,7 +59,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   // If the admin is editing their own profile, update their session token
   if (admin.user.id === id) {
-    const secret = process.env.AUTH_SESSION_SECRET || "dev-secret";
+    const secret = getSessionSecret();
     const newToken = signToken(
       {
         sub: target.id,

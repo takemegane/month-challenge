@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyToken } from "../../../lib/crypto";
+import { verifyToken, getSessionSecret } from "../../../lib/crypto";
 import { query } from "../../../lib/db";
 
 const Q = z.object({
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || '';
   const m = /(?:^|; )auth-token=([^;]+)/.exec(cookie);
   if (!m) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  const v = verifyToken(decodeURIComponent(m[1]), process.env.AUTH_SESSION_SECRET || 'dev-secret');
+  const v = verifyToken(decodeURIComponent(m[1]), getSessionSecret());
   if (!v.valid) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const uid = v.payload?.sub as string;
 

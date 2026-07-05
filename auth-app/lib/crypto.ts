@@ -1,5 +1,15 @@
 import { randomBytes, scryptSync, timingSafeEqual, createHmac } from "node:crypto";
 
+// セッション秘密鍵の取得。未設定なら静かに脆弱化せず、明確なエラーで止める。
+// （ビルド時評価を避けるため、必ずリクエスト処理中に呼ぶこと）
+export function getSessionSecret(): string {
+  const secret = process.env.AUTH_SESSION_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_SESSION_SECRET is not set");
+  }
+  return secret;
+}
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
   const key = scryptSync(password, salt, 64).toString("hex");

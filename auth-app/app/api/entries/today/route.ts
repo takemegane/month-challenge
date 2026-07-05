@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "../../../../lib/crypto";
+import { verifyToken, getSessionSecret } from "../../../../lib/crypto";
 import { query } from "../../../../lib/db";
 import { getJstTodayDate } from "../../../../lib/date";
 
@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || '';
   const m = /(?:^|; )auth-token=([^;]+)/.exec(cookie);
   if (!m) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  const secret = process.env.AUTH_SESSION_SECRET || 'dev-secret';
+  const secret = getSessionSecret();
   const v = verifyToken(decodeURIComponent(m[1]), secret);
   if (!v.valid) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const uid = v.payload?.sub as string;

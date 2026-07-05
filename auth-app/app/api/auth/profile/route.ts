@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyPassword, hashPassword, signToken } from "../../../../lib/crypto";
+import { verifyPassword, hashPassword, signToken, getSessionSecret } from "../../../../lib/crypto";
 import { query } from "../../../../lib/db";
 
 const BodySchema = z.object({
@@ -20,7 +20,7 @@ export async function PUT(req: Request) {
   const token = getToken(req);
   if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const secret = process.env.AUTH_SESSION_SECRET || "dev-secret";
+  const secret = getSessionSecret();
   const { verifyToken } = await import("../../../../lib/crypto");
   const verification = verifyToken(token, secret);
   if (!verification.valid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
