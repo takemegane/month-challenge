@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { verifyToken } from "../../../../lib/crypto";
 import { query } from "../../../../lib/db";
 import { getJstTodayDate } from "../../../../lib/date";
-import { enqueueDailyStatsDiff } from "../../../../lib/cache-jobs";
 import { logger } from "../../../../lib/logger";
 import { z } from "zod";
 
@@ -49,36 +48,13 @@ export async function POST(req: Request) {
     if (existingEntries.length > 0) {
       // 存在する場合は取り消し（削除）
       await query`delete from auth_entries where user_id = ${uid} and entry_date = ${entry_date}`;
-      // NOTE: daily-stats cache jobs are not consumed by any scheduled worker
-      // (cron removed; stats read directly from auth_entries). Fire-and-forget so
-      // it never blocks the toggle response.
-      enqueueDailyStatsDiff({
-        userId: uid,
-        entryDate: entry_date,
-        action: "remove",
-        source: "user_entry",
-      }).catch((cacheError) => {
-        logger.error("Failed to enqueue cache diff job for deletion", { uid, entry_date, error: cacheError });
-      });
       status = 'removed';
     } else {
       // 存在しない場合は追加
-      const rows = await query<{ id: string }>`
+      await query`
         insert into auth_entries (user_id, entry_date) values (${uid}, ${entry_date})
         on conflict (user_id, entry_date) do nothing
-        returning id
       `;
-      if (rows.length > 0) {
-        // See note above: fire-and-forget, do not block the response.
-        enqueueDailyStatsDiff({
-          userId: uid,
-          entryDate: entry_date,
-          action: "add",
-          source: "user_entry",
-        }).catch((cacheError) => {
-          logger.error("Failed to enqueue cache diff job for addition", { uid, entry_date, error: cacheError });
-        });
-      }
       status = 'added';
     }
 
