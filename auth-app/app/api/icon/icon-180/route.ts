@@ -21,10 +21,9 @@ export async function GET(request: NextRequest) {
     if (response.ok) {
       const buffer = await response.arrayBuffer();
       return new NextResponse(buffer, {
-        headers: {
+        headers: withNoStore({
           'Content-Type': response.headers.get('content-type') || 'image/svg+xml',
-          'Cache-Control': 'public, max-age=3600',
-        },
+        }),
       });
     }
 
