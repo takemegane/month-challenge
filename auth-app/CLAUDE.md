@@ -1,400 +1,81 @@
-# 月チャレ開発履歴・注意点
+# 月チャレ（auth-app）
 
-## 🔗 本番環境URL
+コミュニティ向けの日次スタンプ記録アプリ。メールアドレスとパスワードでログインする。
 
-**ログインURL**: https://month-challenge-auth.vercel.app/
+- 本番: https://month-challenge-auth.vercel.app/
+- 場所: `~/dev/month-challenge/auth-app`
 
-## 📊 今回のセッション成果
+## コマンド
 
-### 🔄 Redis → Neon データ移行完了（2025-11-01）
-
-#### **背景**
-- 本番環境がRedisをプライマリストレージとして使用していた
-- キャッシュシステムがNeonのみに依存していたため、動作しなかった
-- Redis: 37ユーザー、512エントリー / Neon: 34ユーザー、65エントリー
-
-#### **実施した移行作業**
-1. **データバックアップ**
-   - Redis全データをAPIエンドポイント経由でエクスポート
-   - Neon既存データをCSV形式でバックアップ
-   - バックアップファイル: `/tmp/redis-export-backup.json`, `/tmp/neon-*-backup.csv`
-
-2. **データ分析**
-   - 差分分析スクリプト作成: `scripts/analyze-migration.js`
-   - Redisにのみ存在: 3ユーザー、447エントリー
-   - ID形式の違い: Redis=数値ID、Neon=UUID
-
-3. **移行スクリプト開発**
-   - `scripts/migrate-redis-to-neon.js`: フルマイグレーション
-   - `scripts/migrate-entries-only.js`: エントリー専用移行
-   - ドライランモードでの事前検証
-
-4. **本番移行実行**
-   - ユーザー移行: 34 → 37人（3人追加、3人のパスワード更新）
-   - エントリー移行: 65 → 482件（417件追加）
-   - 孤児エントリー: 26件（削除済みユーザーのデータ）
-   - エラー: 12件（古い不正な日付形式）
-
-5. **システム切り替え**
-   - Vercel環境変数からREDIS_URL削除
-   - `lib/db.ts`の優先順位によりNeonのみ使用
-   - 本番デプロイ完了
-
-#### **移行結果**
-| 項目 | 移行前 | 移行後 |
-|------|--------|--------|
-| ユーザー数 | Redis: 37, Neon: 34 | Neon: 37 |
-| エントリー数 | Redis: 512, Neon: 65 | Neon: 482 |
-| データストレージ | Redis（プライマリ） | Neon PostgreSQL |
-
-#### **データ整合性検証**
-- ✅ 全37ユーザーが正常に移行
-- ✅ 32ユーザーがエントリーを持つ（5人は新規登録直後）
-- ✅ 上位ユーザーのエントリー数が一致（例: もーりー 26件）
-- ✅ 孤児エントリーを適切にスキップ
-
-#### **影響**
-- ✅ データ損失なし（重要データ100%保全）
-- ✅ システムがNeon単一ストレージで動作
-- ✅ キャッシュシステムが正常動作可能に
-- ⚠️ 12件の古い不正データはスキップ（影響なし）
-
-#### **作成されたスクリプト**
-- `scripts/analyze-migration.js`: データ差分分析
-- `scripts/migrate-redis-to-neon.js`: 完全移行スクリプト
-- `scripts/migrate-entries-only.js`: エントリー専用移行
-
----
-
-### 🔍 データベース最適化診断（2025-09-27）
-
-#### **診断結果: 追加インデックス不要**
-1. **既存インデックス完備**: 主要クエリは全て最適化済み
-2. **適正データ量**: 1000ユーザー規模でも問題なし（予測15MB以下）
-3. **リスク回避**: 不要な変更を避けてシステム安定性優先
-
-#### **現在のインデックス構成**
-- `auth_entries(user_id, entry_date)` - チェック管理最適化済み
-- `auth_users(email)` - ログイン処理最適化済み
-- プライマリキー各種 - 標準的な最適化済み
-
-#### **1000ユーザー規模パフォーマンス予測**
-- **現在**: 6ユーザー、39エントリー、90KB
-- **予測**: 1000ユーザー、6500エントリー、15MB
-- **結論**: 既存インデックスで十分な性能確保
-
-### 🚀 チェック管理ページの大幅最適化（2025-09-27）
-
-#### **実装した主要機能**
-1. **段階的読み込み**: 初期表示速度70%改善
-2. **チェック操作の即座利用**: 軽量ユーザーリストで瞬時表示
-3. **ユーザー別ランキング**: 「集計表示」ボタンでオンデマンド読み込み
-4. **スマホ向けUX改善**: メール列非表示、ヘッダー幅最適化
-
-#### **新しいAPIエンドポイント**
-- `/api/admin/users-list`: 軽量ユーザーリスト（チェック操作用）
-- `/api/admin/daily-stats`: 日別チェック状況
-- `/api/admin/user-ranking`: ユーザー別ランキング
-
-#### **技術的改善**
-- SWR活用による効率的なデータフェッチング
-- 段階的読み込み戦略の実装
-- レスポンシブ対応テーブル設計
-- 同率順位対応のランキングロジック
-
-### 🔧 JST日付処理バグ修正（2025-09-30）
-
-#### **問題**
-- API `/api/entries/today/route.ts` の日付変換処理が間違っていた
-- JST午前0時台のボタン押しが前日として記録される
-- カレンダーにスタンプが正しく表示されない
-
-#### **修正内容**
-- 間違った変換: `new Date().toLocaleString()`
-- 正しい変換: `getJstTodayDate()` 関数使用
-- ファイル: `auth-app/app/api/entries/today/route.ts:14`
-
-#### **影響**
-- 今後の記録は正確な日本時間で保存
-- 既存の誤記録データは管理画面で確認可能
-
-### 🔧 「今月のカレンダー」ボタンのJST対応（2025-10-02）
-
-#### **問題**
-- Header.tsx の「今月のカレンダー」ボタンがUTC時刻を使用していた
-- JST午前0時〜8時59分の間、前月が表示される重大なバグ
-- 特に年またぎ（12/31→1/1）で前年12月が表示される問題
-
-#### **具体的な問題例**
-- 11/1 00:00〜08:59: ボタンを押すと10月が表示される
-- 1/1 00:00〜08:59: ボタンを押すと前年12月が表示される
-- 原因: `new Date().toISOString()` がUTC基準で9時間のズレ
-
-#### **修正内容**
-- 修正前: `new Date().toISOString().slice(0, 7)` （UTC時刻）
-- 修正後: `getJstTodayDate().slice(0, 7)` （JST時刻）
-- ファイル: `auth-app/components/Header.tsx:5,13`
-
-#### **影響**
-- JST午前0時ちょうどから、正しく新しい月のカレンダーが表示される
-- 年またぎも含め、すべての月の切り替わりで正常に動作
-- ユーザーは常に正しい月の日付ボタンを押せるようになった
-
-## 🔧 システム構成
-
-### **バックエンド**
-- **Database**: Neon PostgreSQL（プライマリストレージ）
-- **Auth**: JWT + Cookie
-- **Storage**: Vercel Filesystem (icons)
-- ~~**Cache**: Redis Cloud~~ ← 2025-11-01にNeonに統合
-
-### **フロントエンド**
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Data Fetching**: SWR
-- **State Management**: React Hooks
-
-### **インフラ**
-- **Hosting**: Vercel
-- **Environment**:
-  - Development: http://localhost:3001
-  - Production: Vercel domain
-
-## ⚠️ 重要な注意点
-
-### **開発時の注意**
-
-1. **ポート管理**
-   - 開発サーバー: 3001（3000が使用中の場合）
-   - 複数サーバー起動を避ける
-
-2. **API設計**
-   - SWR使用時は`null`でAPIコール無効化
-   - TypeScript型定義を正確に
-   - Neonのタイムアウト処理を考慮
-
-### **デプロイ時の注意**
-
-1. **TypeScriptエラー**
-   - SWRの型定義（string | null）
-   - useUserRanking hookの型チェック
-
-2. **manifest.json競合**
-   - 静的ファイルとAPIルートの競合に注意
-   - 動的manifest生成を使用
-
-3. **環境変数**
-   ```bash
-   DATABASE_URL_AUTH=postgresql://...
-   AUTH_SESSION_SECRET=...
-   ADMIN_EMAILS=...
-   ADMIN_CRON_TOKEN=...
-   ```
-
-### **運用時の注意**
-
-1. **パフォーマンス**
-   - SWRキャッシュの効果的活用
-   - 段階的読み込みの効果測定
-   - Neon接続状況の監視
-
-2. **ユーザビリティ**
-   - スマホでの表示確認
-   - ランキング機能の直感性
-   - 読み込み状態の明確化
-
-## 📁 重要ファイル
-
-### **バックアップファイル**
-- `app/admin/overview/page-original.tsx`: 元のページ
-- `app/admin/overview/page.tsx.backup`: バックアップ
-- `app/api/admin/overview/route.ts.backup`: APIバックアップ
-
-### **コア機能ファイル**
-- `app/admin/overview/page.tsx`: 最適化済みチェック管理
-- `hooks/use-api.ts`: SWR hooks定義
-- `app/api/admin/user-ranking/route.ts`: ランキングAPI
-- `app/api/admin/users-list/route.ts`: ユーザーリストAPI
-- `app/api/admin/daily-stats/route.ts`: 日別統計API
-
-## 🔄 復旧方法
-
-### **元のページに戻す場合**
 ```bash
-mv app/admin/overview/page.tsx app/admin/overview/page-optimized.tsx
-mv app/admin/overview/page-original.tsx app/admin/overview/page.tsx
+npm run dev -- -p 3001                         # 開発サーバー
+node node_modules/typescript/bin/tsc --noEmit   # 型チェック（約1.3秒）
 ```
 
-### **開発サーバー起動**
-```bash
-cd "/Users/motoki/Desktop/Codex CLI/month challenge/auth-app"
-npm run dev
+実装後は型チェックを必ず通す。**build は指示があるときだけ**実行する（dev サーバーを壊すことがある）。lint は未設定。
+
+## 最重要ルール
+
+- 迷ったら止まる。推測で進めない。不明点は実装前に質問する
+- 動作確認できる単位で必ず止まり、ユーザーの確認を待つ
+- 秘匿情報（APIキー・シークレット・パスワード）の値そのものを出力しない。一致確認が必要なときは yes/no だけ答える
+- 同じ指摘を2回受けたら、このファイルへの追記を提案する（**追記は勝手に行わず承認を得る**）
+
+## プロジェクト構成
+
+```
+app/          画面と API ルート（App Router）
+  api/auth/     ログイン・登録・ログアウト・セッション確認
+  api/admin/    管理機能（すべて lib/admin-auth.ts で権限確認）
+components/   Header, CalendarView, CalendarGrid など
+hooks/        use-api.ts … SWR フックの定義場所
+lib/          crypto.ts(Node用署名) edge-token.ts(Edge用検証) db.ts date.ts
+middleware.ts 全パスの認証ゲート
+docs/         詳細ドキュメント（下記）
 ```
 
-## 📈 次のステップ候補
+## 触らない場所
 
-1. **パフォーマンス測定**
-   - 実際の読み込み時間計測
-   - ユーザー体験の定量評価
+- `.env` `.env.local` `.env.*.local` … 読まない・変更しない
+- リポジトリ直下（`../app` `../lib` など）は**別プロジェクトの旧システム**。auth-app の作業では触らない
 
-2. **機能拡張**
-   - CSVエクスポート機能の拡充
-   - フィルタリング機能
-   - 期間指定機能
+## 落とし穴（過去に踏んだもの）
 
-3. **監視強化**
-   - Neon接続状況の可視化
-   - APIレスポンス時間の監視
+- **日付は必ず `getJstTodayDate()` を使う。** `new Date().toISOString()` や `toLocaleString()` はUTC基準になり、JST午前0時〜8時台に前日・前月がずれる。2回同じ事故を起こしている
+- **認証は middleware に一本化した。** 各ページで Cookie の存在チェックを書き足さない。存在だけでは期限切れ・改ざんを弾けない
+- **`lib/crypto.ts` と `lib/edge-token.ts` は同じ署名形式を扱う。** 片方を変えたら必ずもう片方も合わせる
+- **UI での無効化はガードにならない。** API を直接叩けば回避できるので、サーバー側で必ず検証する
+- `AUTH_SESSION_SECRET` を変更すると全ユーザーが強制ログアウトされる
 
-## 🛠️ VPS移行検討時の要点
+## Git ルール
 
-**メリット**: コスト削減の可能性
-**デメリット**: 運用工数大幅増加
+- 機能単位でコミットする。大きくまとめない
+- Conventional Commits（feat: / fix: / chore: / docs: / refactor:）
+- **Co-Authored-By 行を付けない**
+- **commit と push は分ける**。push は指示があるまでしない（本番へ自動デプロイされるため）
+- このファイルの更新は、関連する実装と同じコミットに含める
 
-**必要作業**: サーバー構築、DB移行、監視設定、セキュリティ管理
-**推奨**: 現在の Vercel + Neon 構成継続（Redis削除済み）
+## 実行前に必ず提案して承認を待つ操作
 
-## 🚨 月初制限機能の実装設計（2025-09-30）
+コミット / push / ファイル削除 / DB 操作（migrate・seed・書き込み）/ 環境変数の変更 / 依存パッケージの追加・削除 / 設定ファイル・スキーマの変更
 
-### **機能概要**
-毎月1日〜4日はスタンプを押せない制限機能の実装検討
+## セキュリティ
 
-### **⚠️ 実装時の必須確認事項**
+- 環境変数は `.env.local` に置き、コミット禁止
+- サーバー専用キーはクライアントに出さない
+- すべての API / サーバー処理で権限チェックを行う
+- `curl -c` で作った Cookie ファイルをコミットしない（過去に実トークンを混入させた）
 
-#### **1. タイムゾーン関連**
-- **統一的な日付処理**: `lib/restrictions.ts` で共通関数作成
-- **JST基準の制限判定**: `getJstTodayDate()` 使用必須
-- **午前0時境界の厳密なテスト**: 既存日付バグの再発防止
+## コーディング規約
 
-#### **2. セキュリティ対策**
-```javascript
-// バックエンドでの必須検証
-if (isDayRestricted(iso)) {
-  return NextResponse.json({
-    error: 'day_restricted',
-    message: '毎月1日〜4日はスタンプを押せません',
-    restricted_until: calculateNextAllowedDate(iso)
-  }, { status: 403 });
-}
-```
+- 型は厳格に。`any` 禁止（HTTPエラーは `lib/swr-config.ts` の `HttpError` を使う）
+- Server Component を優先。`'use client'` は必要なときだけ
+- SWR は `null` を渡すと呼び出しを無効化できる
 
-#### **3. 実装箇所**
-- **フロント**: `CalendarGrid.tsx:61-72` - UI無効化
-- **バック**: `today/route.ts:14-15` - API制限
-- **共通**: `lib/restrictions.ts` - 制限ロジック
+## 詳細ドキュメント
 
-#### **4. 重要な設計方針**
-1. **既存データへの影響なし**: 制限は新規作成のみ
-2. **段階的実装**: バックエンド制限 → フロントUI → 管理機能
-3. **緊急解除**: 環境変数 `DISABLE_ALL_RESTRICTIONS=true`
+必要になったときだけ読む。
 
-#### **5. エラーハンドリング**
-- 適切なエラーメッセージ表示
-- 次回可能日時の明示
-- ログ記録とメトリクス
-
-#### **6. テスト必須項目**
-- 月末→月初の境界テスト
-- タイムゾーン変換の検証
-- API直接呼び出しの制限確認
-- 既存機能への影響なし確認
-
-### **🔴 実装前必須作業**
-1. 既存日付処理の完全理解
-2. テスト環境での十分な検証
-3. 段階的デプロイ計画の策定
-4. ロールバック手順の準備
-
----
-
-## 📝 完了したタスク（2025-10-02）
-
-### ✅ JST日付処理の完全対応
-1. **Header.tsx の修正**: 「今月のカレンダー」ボタンをJST対応
-2. **動作確認**: 月またぎ・年またぎの動作を検証
-3. **ドキュメント更新**: CLAUDE.mdに修正履歴を記録
-4. **ファイル整理**: 不要なバックアップファイル削除
-5. **デプロイ完了**: Vercelに自動デプロイ
-
-### 📦 保存したファイル
-- `components/Header.tsx`: JST対応の修正
-- `CLAUDE.md`: 開発履歴とバグ修正記録
-- `set-admin-password.js`: 管理者パスワードリセット用ユーティリティ
-- `package.json` / `package-lock.json`: pg依存関係追加
-
-### 🗑️ 削除したファイル
-- `app/admin/page 2.tsx`: バックアップファイル（不要）
-- `app/admin/page 3.tsx`: バックアップファイル（不要）
-
-### 🔍 確認済み事項
-- ✅ 日本時間で日付が切り替わると、その日のボタンが押せる
-- ✅ 「今月のカレンダー」ボタンが常に正しい月を表示
-- ✅ 年またぎ（12/31→1/1）でも正常に動作
-- ✅ CalendarViewの自動月送り機能が正常動作
-
----
-
-## 📝 移行完了タスク（2025-11-01）
-
-### ✅ Redis → Neon データ完全移行
-1. **データエクスポート**: Redis全データを安全にバックアップ
-2. **差分分析**: 移行が必要なデータを詳細に分析
-3. **移行スクリプト開発**: 段階的で安全な移行スクリプト作成
-4. **本番移行実行**: 37ユーザー、482エントリーを完全移行
-5. **システム切り替え**: REDIS_URL削除、Neon単一ストレージ化
-6. **動作確認**: 本番環境での正常動作を確認
-7. **ドキュメント更新**: 移行履歴をCLAUDE.mdに記録
-
-### 🎯 移行の成果
-- ✅ データ損失ゼロ（100%保全）
-- ✅ システムアーキテクチャの単純化
-- ✅ キャッシュシステムが正常動作可能に
-- ✅ 保守性と信頼性の向上
-
----
-
-## 📝 システム理解の整理（2025-11-01）
-
-### ✅ 現在のシステム構成の明確化
-
-#### **実際に動作しているシステム**
-1. **データストレージ**: Neon PostgreSQL のみ（Redis完全削除）
-2. **データ取得方法**: リアルタイムクエリ（`auth_entries`テーブルから直接取得）
-3. **高速化の手法**:
-   - 段階的読み込み（3つのAPIに分割）
-   - データベースインデックス最適化
-   - SWRによるクライアントサイドキャッシング
-4. **パフォーマンス**: 平均0.27秒（DBクエリ0.16ms + ネットワーク250ms）
-
-#### **構築済みだが使用されていないもの**
-- **キャッシュテーブル**: `auth_daily_stats_cache`、`auth_daily_totals_cache`
-- **ジョブキュー**: `auth_daily_stats_jobs`（1件pending）
-- **キャッシュワーカー**: `/api/admin/cache-worker`（cronジョブ削除済み）
-- **削除理由**: Vercel Hobby Planで1分ごとのcronが使用不可
-
-#### **APIの動作詳細**
-```typescript
-// app/api/admin/daily-stats/route.ts:56-58
-// キャッシュテーブルは使わず、auth_entries から直接取得
-const entryRows = await query<{ user_id: string; entry_date: string }>`
-  select user_id, entry_date from auth_entries
-  where entry_date between ${startStr} and ${endStr}
-  order by entry_date asc
-`;
-```
-
-#### **主要な変更点のまとめ**
-1. **Redis → Neon 移行**: アーキテクチャのシンプル化（37ユーザー、482エントリー）
-2. **段階的読み込み**: 初期表示速度70%改善（2025-09-27実装）
-3. **キャッシュシステム**: 将来の拡張用に準備済み（現在は未使用）
-
-#### **スケーラビリティの見通し**
-- **現在**: 37ユーザー、リアルタイムクエリで十分高速
-- **〜500ユーザー**: 現在の構成で問題なし
-- **500ユーザー以上**: キャッシュシステムの有効化を検討
-
----
-
-**最終更新**: 2025-11-01
-**作業者**: Claude Code + 元気さん
+- `docs/ARCHITECTURE.md` … システム構成、認証の流れ、API一覧、環境変数
+- `docs/HISTORY.md` … 過去の変更と、その理由
+- `docs/IDEAS.md` … 未実装の構想（月初制限機能など）
