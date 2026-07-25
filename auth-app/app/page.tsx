@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 // ここに到達するのはログイン済みのユーザーだけ。
 // 以前はここに静的な案内ページを置いていたので、ログイン済みで開いても
 // 「まずは登録/ログインしてください」と表示されてしまっていた。
-export default function Home() {
+// redirect() の戻り値は never。注釈を省くと推論が void になり、
+// ページの型チェックで弾かれる可能性があるため明示する。
+export default function Home(): never {
   redirect("/calendar");
 }

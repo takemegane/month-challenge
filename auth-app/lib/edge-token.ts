@@ -4,7 +4,9 @@
 
 const encoder = new TextEncoder();
 
-function fromB64Url(s: string): Uint8Array {
+// 返り値の型注釈はあえて付けない。`Uint8Array` と書くと `ArrayBufferLike` 版に
+// 広がってしまい、crypto.subtle が要求する BufferSource に代入できなくなる。
+function fromB64Url(s: string) {
   let t = s.replace(/-/g, "+").replace(/_/g, "/");
   while (t.length % 4) t += "="; // pad to multiple of 4
   const bin = atob(t);
