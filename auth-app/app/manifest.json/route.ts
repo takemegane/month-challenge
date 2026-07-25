@@ -3,6 +3,8 @@ import { hasIcons } from "../../lib/icon-storage";
 
 export const dynamic = 'force-dynamic'
 
+const ICON_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+
 export async function GET() {
   const baseManifest = {
     name: "月チャレ - 月間チャレンジトラッカー",
@@ -21,68 +23,24 @@ export async function GET() {
     }>
   };
 
-  // Check if we have uploaded icons
+  // 管理画面からアイコンがアップロードされていれば Neon 上のものを配信する
   if (await hasIcons()) {
-    // Use uploaded icons
-    const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
-    baseManifest.icons = iconSizes.map(size => ({
+    baseManifest.icons = ICON_SIZES.map(size => ({
       src: `/api/icon/icon-${size}`,
       sizes: `${size}x${size}`,
       type: "image/png",
       purpose: "maskable any"
     }));
   } else {
-    // Fallback to default GitHub icons
-    baseManifest.icons = [
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-72.png.svg",
-        sizes: "72x72",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-96.png.svg",
-        sizes: "96x96",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-128.png.svg",
-        sizes: "128x128",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-144.png.svg",
-        sizes: "144x144",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-152.png.svg",
-        sizes: "152x152",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-192.svg",
-        sizes: "192x192",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-384.png.svg",
-        sizes: "384x384",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      },
-      {
-        src: "https://raw.githubusercontent.com/takemegane/month-challenge/main/public/icons/icon-512.svg",
-        sizes: "512x512",
-        type: "image/svg+xml",
-        purpose: "maskable any"
-      }
-    ];
+    // 未アップロード時は同梱の静的アイコンを使う。
+    // 以前は GitHub の raw URL を指していたが、参照先の public/ を撤去した際に
+    // 404 になった。外部依存をなくすため public/icons/ を直接参照する。
+    baseManifest.icons = ICON_SIZES.map(size => ({
+      src: `/icons/icon-${size}.png`,
+      sizes: `${size}x${size}`,
+      type: "image/png",
+      purpose: "maskable any"
+    }));
   }
 
   return NextResponse.json(baseManifest, {
