@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "../hooks/use-api";
@@ -7,7 +8,16 @@ import { getJstTodayDate } from "../lib/date";
 export default function Header() {
   const pathname = usePathname() || "/";
   const isAuth = pathname.startsWith("/auth");
-  const { user, isLoading } = useUser();
+  const { user, isLoading, errorStatus } = useUser();
+
+  // セッション切れ(401)ならログイン画面へ自動で戻す。
+  // 通信エラーでは遷移しない（瞬断で使用中のユーザーを追い出さないため）。
+  const sessionExpired = !isAuth && errorStatus === 401;
+  useEffect(() => {
+    if (sessionExpired) {
+      window.location.href = "/auth/sign-in";
+    }
+  }, [sessionExpired]);
 
   // Generate current month for calendar reset (JST-based)
   const currentMonthPath = `/calendar?month=${getJstTodayDate().slice(0, 7)}`;
@@ -32,16 +42,17 @@ export default function Header() {
   }
 
   if (!user) {
-    // ユーザー情報が取得できない場合は強制ログアウト
+    // 401 は上の useEffect が遷移させるので、ここでは何も描画しない
+    if (sessionExpired) {
+      return null;
+    }
+    // 通信エラーなど。自動では飛ばさず、手動の導線だけ出す
     return (
-      <div className="p-4 bg-red-50 border border-red-200 text-red-800">
-        セッションが無効です。
-        <button
-          onClick={() => window.location.href = "/auth/sign-in"}
-          className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded border"
-        >
+      <div className="p-4 text-zinc-700">
+        読み込みに失敗しました。
+        <Link href="/auth/sign-in" className="ml-2 underline text-orange-700">
           ログインページへ
-        </button>
+        </Link>
       </div>
     );
   }

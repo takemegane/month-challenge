@@ -1,5 +1,12 @@
 import { SWRConfiguration } from 'swr';
 
+// fetcher が投げるHTTPエラー。ステータスで分岐したい箇所があるため型を付ける。
+export type HttpError = Error & { status: number; info: unknown };
+
+export function isHttpError(e: unknown): e is HttpError {
+  return e instanceof Error && typeof (e as Partial<HttpError>).status === 'number';
+}
+
 // Custom fetcher with credentials and error handling
 export const fetcher = async (url: string) => {
   const res = await fetch(url, {
@@ -9,9 +16,9 @@ export const fetcher = async (url: string) => {
 
   // Handle HTTP errors
   if (!res.ok) {
-    const error = new Error('HTTP Error');
-    (error as any).status = res.status;
-    (error as any).info = await res.json().catch(() => ({}));
+    const error = new Error('HTTP Error') as HttpError;
+    error.status = res.status;
+    error.info = await res.json().catch(() => ({}));
     throw error;
   }
 
@@ -30,6 +37,15 @@ export const swrConfig: SWRConfiguration = {
   // Retry on error with exponential backoff
   errorRetryCount: 3,
   errorRetryInterval: 1000,
+  // 4xx はリトライしても結果が変わらないので即座に諦める。
+  // 401 のログアウト検知が3回のリトライ分だけ遅れるのを防ぐ狙いもある。
+  onErrorRetry: (error, _key, config, revalidate, { retryCount }) => {
+    if (isHttpError(error) && error.status >= 400 && error.status < 500) return;
+    const maxRetry = config.errorRetryCount ?? 3;
+    if (retryCount >= maxRetry) return;
+    const interval = config.errorRetryInterval ?? 1000;
+    setTimeout(() => revalidate({ retryCount }), interval * 2 ** Math.min(retryCount, 8));
+  },
   // Keep data fresh
   refreshInterval: 0, // Disable auto refresh for now
   // Performance optimizations

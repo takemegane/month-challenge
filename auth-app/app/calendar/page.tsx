@@ -1,22 +1,13 @@
 import { CalendarView } from "../../components/CalendarView";
-import { cookies } from "next/headers";
 
 type Props = {
   searchParams: Promise<{ month?: string }>;
 };
 
+// 未ログイン・セッション切れは middleware が /auth/sign-in へ振り分ける。
+// ここに Cookie の存在チェックを置いていたが、存在するだけで通してしまい
+// 期限切れでも「未ログインです」の文章を出す中途半端な状態になっていた。
 export default async function CalendarPage({ searchParams }: Props) {
-  // Ensure logged-in; if not, redirect
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token');
-  if (!token) {
-    return (
-      <div>
-        <p>未ログインです。<a className="underline text-orange-700" href="/auth/sign-in">ログイン</a>してください。</p>
-      </div>
-    );
-  }
-
   const params = await searchParams;
   const initialMonth = params.month ? `${params.month}-01` : undefined;
 

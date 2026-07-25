@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { verifyToken, getSessionSecret } from "../../../../lib/crypto";
 import { query } from "../../../../lib/db";
 
+// 認証できない場合は 401 を返す。200 で { user: null } を返すと SWR が
+// 「成功」と解釈してしまい、クライアント側でログアウトを検知できない。
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+
 export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || '';
 
@@ -10,7 +16,7 @@ export async function GET(req: Request) {
     if (process.env.NODE_ENV === 'development') {
       console.log("No auth-token found in cookies");
     }
-    return NextResponse.json({ user: null });
+    return unauthorized();
   }
 
   const token = decodeURIComponent(m[1]);
@@ -19,9 +25,9 @@ export async function GET(req: Request) {
 
   if (!v.valid) {
     if (process.env.NODE_ENV === 'development') {
-      console.log("Invalid token, returning null user");
+      console.log("Invalid token, returning 401");
     }
-    return NextResponse.json({ user: null });
+    return unauthorized();
   }
 
   const uid = v.payload?.sub as string;
@@ -34,6 +40,10 @@ export async function GET(req: Request) {
     console.log("Found user:", u ? { id: u.id, email: u.email, name: u.name } : "null");
   }
 
-  return NextResponse.json({ user: u || null });
-}
+  // トークンは正しいがユーザーが削除済みのケース。セッションとしては無効。
+  if (!u) {
+    return unauthorized();
+  }
 
+  return NextResponse.json({ user: u });
+}

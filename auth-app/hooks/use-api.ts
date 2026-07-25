@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import useSWR, { useSWRConfig, preload } from 'swr';
 import useSWRMutation from 'swr/mutation';
-import { fetcher } from '../lib/swr-config';
+import { fetcher, isHttpError } from '../lib/swr-config';
 
 // Types
 interface User {
@@ -67,6 +67,9 @@ export function useUser() {
     user: data?.user || null,
     isLoading,
     isError: !!error,
+    // 401（セッション切れ）と通信エラーを呼び出し側で区別するために公開する。
+    // 通信エラーで誤ってログイン画面へ飛ばさないための判断材料。
+    errorStatus: isHttpError(error) ? error.status : null,
     mutate,
   };
 }
