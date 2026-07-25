@@ -12,3 +12,6 @@ coverage/
 cookies.txt
 *.cookies
 cookie*.txt
+
+# Claude Code のローカル設定（許可リストなど。端末ごとに異なる）
+.claude/
