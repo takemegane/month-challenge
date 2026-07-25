@@ -7,3 +7,8 @@ node_modules/
 .DS_Store
 dist/
 coverage/
+
+# curl の -c/-b で作られるCookieファイル。セッショントークンが入るためコミット禁止
+cookies.txt
+*.cookies
+cookie*.txt
